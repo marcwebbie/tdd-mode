@@ -91,6 +91,7 @@ If set to nil, keeps the buffer in the background."
     (define-key map (kbd "r") 'tdd-mode-run-last-test)
     (define-key map (kbd "c") 'tdd-mode-copy-output-to-clipboard)
     (define-key map (kbd "d") 'tdd-mode-run-relevant-tests)  ;; New keybinding for diff-based relevant tests
+    (define-key map (kbd "f") 'tdd-mode-run-file-tests)      ;; New keybinding for running tests on file/module
     map)
   "Keymap for `tdd-mode` commands.")
 
@@ -150,24 +151,30 @@ Adapted from pytest.el to mimic its test resolution."
          (outer (tdd-mode--outer-testable))
          (outer-def (car outer))
          (outer-obj (cdr outer)))
-    (cond
-     ((equal outer-def "def") outer-obj)
-     ((equal inner-obj outer-obj) outer-obj)
-     (t (format "%s::%s" outer-obj inner-obj)))))
+    (if (and inner-obj outer-def outer-obj)
+        (cond
+         ((equal outer-def "def") outer-obj)
+         ((equal inner-obj outer-obj) outer-obj)
+         (t (format "%s::%s" outer-obj inner-obj)))
+      nil)))
 
 (defun tdd-mode--inner-testable ()
   "Find the function name for the test at point."
   (save-excursion
     (re-search-backward
      "^[ \t]\\{0,4\\}\\(class\\|\\(?:async \\)?def\\)[ \t]+\\([a-zA-Z0-9_]+\\)" nil t)
-    (buffer-substring-no-properties (match-beginning 2) (match-end 2))))
+    (if (match-beginning 2)
+        (buffer-substring-no-properties (match-beginning 2) (match-end 2))
+      nil)))
 
 (defun tdd-mode--outer-testable ()
   "Find the class or outer function around point."
   (save-excursion
     (re-search-backward
      "^\\(class\\|\\(?:async \\)?def\\)[ \t]+\\([a-zA-Z0-9_]+\\)" nil t)
-    (cons (match-string 1) (match-string 2))))
+    (if (match-beginning 2)
+        (cons (match-string 1) (match-string 2))
+      nil)))
 
 (defun tdd-mode-get-test-command ()
   "Construct the test command using the test entity at point."
@@ -244,6 +251,13 @@ Adapted from pytest.el to mimic its test resolution."
                              (mapconcat 'identity test-files " "))))
         (tdd-mode-log "Running relevant tests with command '%s'" command)
         (tdd-mode-run-test command)))))
+
+(defun tdd-mode-run-file-tests ()
+  "Run tests on the current file/module."
+  (interactive)
+  (let ((test-command (tdd-mode-get-test-command)))
+    (tdd-mode-log "Running tests on the current file/module: `%s`" test-command)
+    (tdd-mode-run-test test-command)))
 
 (defun tdd-mode-get-project-root ()
   "Detect project root based on common markers."
