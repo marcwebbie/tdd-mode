@@ -36,6 +36,11 @@
   :type 'boolean
   :group 'tdd-mode)
 
+(defcustom tdd-mode-verbose t
+  "Toggle verbose debug output for TDD Mode."
+  :type 'boolean
+  :group 'tdd-mode)
+
 (defvar tdd-mode-test-buffer "*tdd-output*"
   "Buffer for displaying test output.")
 
@@ -45,15 +50,15 @@
 (defvar tdd-mode-original-mode-line-bg (face-background 'mode-line)
   "Original mode-line background color.")
 
-(defvar tdd-mode-reset-timer nil
-  "Timer to reset mode-line color after test run indication.")
+(defvar tdd-mode-failure-timer nil
+  "Timer to control mode-line blinking for test failures.")
 
 (defvar tdd-mode-command-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "t") 'tdd-mode-run-test-at-point)
     (define-key map (kbd "a") 'tdd-mode-run-all-tests)
     (define-key map (kbd "r") 'tdd-mode-run-last-test)
-    (define-key map (kbd "c") 'tdd-mode-copy-output)
+    (define-key map (kbd "c") 'tdd-mode-copy-output-to-clipboard)
     map)
   "Keymap for `tdd-mode` commands.")
 
@@ -64,20 +69,39 @@
   (defvar tdd-mode-alert-enabled nil
     "Nil if `alert` package is unavailable; fallback to `message` notifications."))
 
+(defun tdd-mode-log (message &rest args)
+  "Log MESSAGE with ARGS if `tdd-mode-verbose` is enabled."
+  (when tdd-mode-verbose
+    (message "[tdd-mode] %s" (apply 'format message args))))
+
 (defun tdd-mode-set-mode-line-color (color)
   "Set the mode-line background color to COLOR."
   (set-face-background 'mode-line color))
 
+(defun tdd-mode-blink-failure-mode-line ()
+  "Blink the mode-line color to indicate test failure."
+  (when (timerp tdd-mode-failure-timer)
+    (cancel-timer tdd-mode-failure-timer))
+  (let ((blink-color "#F44336"))
+    (setq tdd-mode-failure-timer
+          (run-with-timer 0.2 0.4
+                          (lambda ()
+                            (tdd-mode-set-mode-line-color
+                             (if (eq (face-background 'mode-line) blink-color)
+                                 tdd-mode-original-mode-line-bg
+                               blink-color)))))))
+
 (defun tdd-mode-reset-mode-line-color ()
-  "Reset mode-line background to original color."
-  (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg))
+  "Reset mode-line background to original color and stop blinking."
+  (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg)
+  (when (timerp tdd-mode-failure-timer)
+    (cancel-timer tdd-mode-failure-timer)))
 
 (defun tdd-mode--get-current-defun ()
   "Retrieve the name of the current function for constructing a pytest command."
   (save-excursion
     (when (python-nav-beginning-of-defun)
       (let ((full-name (python-info-current-defun)))
-        ;; Ensure only the function name, not the full path, is returned.
         (when full-name
           (car (last (split-string full-name "\\."))))))))
 
@@ -87,9 +111,9 @@
          (func-name (tdd-mode--get-current-defun))
          (class-name (tdd-mode--get-class-name))
          (runner (tdd-mode-get-runner)))
-    (message "Debug: File name = %s" file-name)
-    (message "Debug: Class name = %s" (or class-name "nil"))
-    (message "Debug: Function name = %s" (or func-name "nil"))
+    (tdd-mode-log "File name = %s" file-name)
+    (tdd-mode-log "Class name = %s" (or class-name "nil"))
+    (tdd-mode-log "Function name = %s" (or func-name "nil"))
     (cond
      ((and func-name class-name)
       (format "%s %s::%s::%s" runner file-name class-name func-name))
@@ -107,7 +131,7 @@
   (save-excursion
     (re-search-backward "^class \\([A-Za-z0-9_]+\\)" nil t)
     (let ((class-name (match-string 1)))
-      (message "Debug: Found class name: %s" class-name)
+      (tdd-mode-log "Found class name: %s" class-name)
       class-name)))
 
 (defun tdd-mode-get-runner ()
@@ -142,7 +166,7 @@
   "Run the test at point (function, class, or file level)."
   (interactive)
   (let ((test-command (tdd-mode-get-test-command)))
-    (message "Debug: Running test at point with command `%s`" test-command)
+    (tdd-mode-log "Running test at point with command `%s`" test-command)
     (tdd-mode-run-test test-command)))
 
 (defun tdd-mode-run-last-test ()
@@ -150,7 +174,7 @@
   (interactive)
   (if tdd-mode-last-test-command
       (progn
-        (message "Debug: Running last test command '%s'" tdd-mode-last-test-command)
+        (tdd-mode-log "Running last test command '%s'" tdd-mode-last-test-command)
         (tdd-mode-run-test tdd-mode-last-test-command))
     (message "No last test command to run.")))
 
@@ -158,7 +182,7 @@
   "Run all tests in the project."
   (interactive)
   (let ((command (format "%s %s" (tdd-mode-get-runner) (tdd-mode-get-project-root))))
-    (message "Debug: Running all tests with command '%s'" command)
+    (tdd-mode-log "Running all tests with command '%s'" command)
     (tdd-mode-run-test command)))
 
 (defun tdd-mode-get-project-root ()
@@ -177,10 +201,9 @@
 
 (defun tdd-mode-update-mode-line (exit-code)
   "Update the mode line based on EXIT-CODE."
-  (tdd-mode-set-mode-line-color (if (eq exit-code 0) "#4CAF50" "#F44336"))
-  (when (timerp tdd-mode-reset-timer)
-    (cancel-timer tdd-mode-reset-timer))
-  (setq tdd-mode-reset-timer (run-with-timer 2 nil 'tdd-mode-reset-mode-line-color)))
+  (if (eq exit-code 0)
+      (tdd-mode-reset-mode-line-color)
+    (tdd-mode-blink-failure-mode-line)))
 
 (defun tdd-mode-notify (exit-code)
   "Notify user based on EXIT-CODE and user preferences."
@@ -196,11 +219,12 @@
         (message msg))))))
 
 (defun tdd-mode-after-save-handler ()
-  "Automatically rerun last test if configured."
-  (when tdd-mode-auto-run-on-save
+  "Automatically rerun last test if configured and if buffer matches file criteria."
+  (when (and tdd-mode-auto-run-on-save
+             (string-match-p "\\.py\\'" (buffer-file-name)))
     (tdd-mode-run-last-test)))
 
-(defun tdd-mode-copy-output ()
+(defun tdd-mode-copy-output-to-clipboard ()
   "Copy the test output to the clipboard."
   (interactive)
   (if (get-buffer tdd-mode-test-buffer)
@@ -218,10 +242,10 @@
       (progn
         (setq tdd-mode-original-mode-line-bg (face-background 'mode-line))
         (add-hook 'after-save-hook 'tdd-mode-after-save-handler nil t)
-        (message "TDD Mode activated"))
+        (message "[tdd-mode] TDD Mode activated"))
     (remove-hook 'after-save-hook 'tdd-mode-after-save-handler t)
     (tdd-mode-reset-mode-line-color)
-    (message "TDD Mode deactivated")))
+    (message "[tdd-mode] TDD Mode deactivated")))
 
 (provide 'tdd-mode)
 ;;; tdd-mode.el ends here
