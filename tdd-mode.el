@@ -4,6 +4,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'color)
+(require 'python)
 
 (defgroup tdd-mode nil
   "Test-Driven Development mode for Python projects in Emacs."
@@ -136,42 +137,40 @@ If set to nil, keeps the buffer in the background."
   (let ((color (if (eq exit-code 0) tdd-mode-blink-pass-color tdd-mode-blink-fail-color)))
     (tdd-mode-blink-mode-line color)))
 
-(defun tdd-mode--get-current-defun ()
-  "Retrieve the name of the current function for constructing a pytest command."
+(defun tdd-mode--get-testable ()
+  "Get the testable entity at point (function, class, or file).
+Adapted from pytest.el to mimic its test resolution."
+  (let* ((inner-obj (tdd-mode--inner-testable))
+         (outer (tdd-mode--outer-testable))
+         (outer-def (car outer))
+         (outer-obj (cdr outer)))
+    (cond
+     ((equal outer-def "def") outer-obj)
+     ((equal inner-obj outer-obj) outer-obj)
+     (t (format "%s::%s" outer-obj inner-obj)))))
+
+(defun tdd-mode--inner-testable ()
+  "Find the function name for the test at point."
   (save-excursion
-    (when (python-nav-beginning-of-defun)
-      (let ((full-name (python-info-current-defun)))
-        (when full-name
-          (car (last (split-string full-name "\\."))))))))
+    (re-search-backward
+     "^[ \t]\\{0,4\\}\\(class\\|\\(?:async \\)?def\\)[ \t]+\\([a-zA-Z0-9_]+\\)" nil t)
+    (buffer-substring-no-properties (match-beginning 2) (match-end 2))))
+
+(defun tdd-mode--outer-testable ()
+  "Find the class or outer function around point."
+  (save-excursion
+    (re-search-backward
+     "^\\(class\\|\\(?:async \\)?def\\)[ \t]+\\([a-zA-Z0-9_]+\\)" nil t)
+    (cons (match-string 1) (match-string 2))))
 
 (defun tdd-mode-get-test-command ()
-  "Get test command based on position (function, class, or file)."
+  "Construct the test command using the test entity at point."
   (let* ((file-name (buffer-file-name))
-         (func-name (tdd-mode--get-current-defun))
-         (class-name (tdd-mode--get-class-name))
-         (runner (tdd-mode-get-runner)))
-    (tdd-mode-log "File name = %s" file-name)
-    (tdd-mode-log "Class name = %s" (or class-name "nil"))
-    (tdd-mode-log "Function name = %s" (or func-name "nil"))
-    (cond
-     ((and func-name class-name)
-      (format "%s %s::%s::%s" runner file-name class-name func-name))
-     ((and (not func-name) class-name) ;; Cursor on class but not in method
-      (format "%s %s::%s" runner file-name class-name))
-     (func-name
-      (format "%s %s::%s" runner file-name func-name))
-     (file-name
-      (format "%s %s" runner file-name))
-     (t
-      (error "Unable to determine test command at point")))))
-
-(defun tdd-mode--get-class-name ()
-  "Retrieve the class name at point."
-  (save-excursion
-    (re-search-backward "^class \\([A-Za-z0-9_]+\\)" nil t)
-    (let ((class-name (match-string 1)))
-      (tdd-mode-log "Found class name: %s" class-name)
-      class-name)))
+         (runner (tdd-mode-get-runner))
+         (test-entity (tdd-mode--get-testable)))
+    (if test-entity
+        (format "%s %s::%s" runner file-name test-entity)
+      (format "%s %s" runner file-name))))
 
 (defun tdd-mode-get-runner ()
   "Return the configured test runner command."
