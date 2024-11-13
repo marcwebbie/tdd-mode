@@ -32,13 +32,29 @@
   :group 'tdd-mode)
 
 (defcustom tdd-mode-buffer-popup t
-  "If non-nil, displays the `*tdd-output*` buffer after each test run."
+  "If non-nil, displays the `*tdd-output*` buffer after each test run.
+If set to nil, keeps the buffer in the background."
   :type 'boolean
   :group 'tdd-mode)
 
 (defcustom tdd-mode-verbose t
   "Toggle verbose debug output for TDD Mode."
   :type 'boolean
+  :group 'tdd-mode)
+
+(defcustom tdd-mode-blink-enabled t
+  "If non-nil, enables mode-line blinking on test failures."
+  :type 'boolean
+  :group 'tdd-mode)
+
+(defcustom tdd-mode-blink-fail-color "#F44336"
+  "Color for the mode-line when a test fails."
+  :type 'string
+  :group 'tdd-mode)
+
+(defcustom tdd-mode-blink-interval 0.6
+  "Interval in seconds for the mode-line blinking effect."
+  :type 'number
   :group 'tdd-mode)
 
 (defvar tdd-mode-test-buffer "*tdd-output*"
@@ -82,14 +98,15 @@
   "Blink the mode-line color to indicate test failure."
   (when (timerp tdd-mode-failure-timer)
     (cancel-timer tdd-mode-failure-timer))
-  (let ((blink-color "#F44336"))
-    (setq tdd-mode-failure-timer
-          (run-with-timer 0.2 0.4
-                          (lambda ()
-                            (tdd-mode-set-mode-line-color
-                             (if (eq (face-background 'mode-line) blink-color)
-                                 tdd-mode-original-mode-line-bg
-                               blink-color)))))))
+  (when tdd-mode-blink-enabled
+    (let ((blink-color tdd-mode-blink-fail-color))
+      (setq tdd-mode-failure-timer
+            (run-with-timer 0 tdd-mode-blink-interval
+                            (lambda ()
+                              (tdd-mode-set-mode-line-color
+                               (if (eq (face-background 'mode-line) blink-color)
+                                   tdd-mode-original-mode-line-bg
+                                 blink-color))))))))
 
 (defun tdd-mode-reset-mode-line-color ()
   "Reset mode-line background to original color and stop blinking."
