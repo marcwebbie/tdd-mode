@@ -3,6 +3,7 @@
 (require 'ansi-color)
 (require 'cl-lib)
 (require 'subr-x)
+(require 'color)
 
 (defgroup tdd-mode nil
   "Test-Driven Development mode for Python projects in Emacs."
@@ -57,8 +58,13 @@ If set to nil, keeps the buffer in the background."
   :type 'string
   :group 'tdd-mode)
 
-(defcustom tdd-mode-blink-duration 2.0
-  "Duration in seconds to hold the mode-line color when blinking."
+(defcustom tdd-mode-blink-steps 10
+  "Number of steps for the mode-line fade effect."
+  :type 'integer
+  :group 'tdd-mode)
+
+(defcustom tdd-mode-blink-interval 0.1
+  "Interval in seconds between each fade step."
   :type 'number
   :group 'tdd-mode)
 
@@ -68,11 +74,14 @@ If set to nil, keeps the buffer in the background."
 (defvar tdd-mode-last-test-command nil
   "Stores the last test command used in TDD mode.")
 
+(defvar tdd-mode-last-test-exit-code nil
+  "Stores the last exit code to show status across buffers.")
+
 (defvar tdd-mode-original-mode-line-bg (face-background 'mode-line)
   "Original mode-line background color.")
 
-(defvar tdd-mode-failure-timer nil
-  "Timer to control mode-line blinking for test failures.")
+(defvar tdd-mode-fade-timer nil
+  "Timer to control mode-line fading.")
 
 (defvar tdd-mode-command-map
   (let ((map (make-sparse-keymap)))
@@ -99,22 +108,33 @@ If set to nil, keeps the buffer in the background."
   "Set the mode-line background color to COLOR."
   (set-face-background 'mode-line color))
 
-(defun tdd-mode-fade-mode-line (color)
-  "Slowly fade the mode-line color from COLOR back to the original color."
-  (tdd-mode-set-mode-line-color color)
-  (run-with-timer tdd-mode-blink-duration nil
-                  (lambda () (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg))))
+(defun tdd-mode-blink-mode-line (color)
+  "Blink the mode-line by fading from COLOR to the original background."
+  (when (timerp tdd-mode-fade-timer)
+    (cancel-timer tdd-mode-fade-timer))
+  (let* ((start-color (color-name-to-rgb color))
+         (end-color (color-name-to-rgb tdd-mode-original-mode-line-bg))
+         (step-colors (tdd-mode-generate-fade-colors start-color end-color tdd-mode-blink-steps)))
+    (setq tdd-mode-fade-timer
+          (run-with-timer 0 tdd-mode-blink-interval
+                          (lambda ()
+                            (if (null step-colors)
+                                (cancel-timer tdd-mode-fade-timer)
+                              (tdd-mode-set-mode-line-color (pop step-colors))))))))
+
+(defun tdd-mode-generate-fade-colors (start-color end-color steps)
+  "Generate a list of colors fading from START-COLOR to END-COLOR in STEPS."
+  (cl-loop for i from 0 below steps
+           collect (apply 'color-rgb-to-hex
+                          (cl-mapcar (lambda (start end)
+                                       (+ start (* i (/ (- end start) (float steps)))))
+                                     start-color end-color))))
 
 (defun tdd-mode-update-mode-line (exit-code)
   "Update the mode line based on EXIT-CODE."
+  (setq tdd-mode-last-test-exit-code exit-code)
   (let ((color (if (eq exit-code 0) tdd-mode-blink-pass-color tdd-mode-blink-fail-color)))
-    (tdd-mode-fade-mode-line color)))
-
-(defun tdd-mode-reset-mode-line-color ()
-  "Reset mode-line background to original color."
-  (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg)
-  (when (timerp tdd-mode-failure-timer)
-    (cancel-timer tdd-mode-failure-timer)))
+    (tdd-mode-blink-mode-line color)))
 
 (defun tdd-mode--get-current-defun ()
   "Retrieve the name of the current function for constructing a pytest command."
@@ -136,10 +156,10 @@ If set to nil, keeps the buffer in the background."
     (cond
      ((and func-name class-name)
       (format "%s %s::%s::%s" runner file-name class-name func-name))
+     ((and (not func-name) class-name) ;; Cursor on class but not in method
+      (format "%s %s::%s" runner file-name class-name))
      (func-name
       (format "%s %s::%s" runner file-name func-name))
-     (class-name
-      (format "%s %s::%s" runner file-name class-name))
      (file-name
       (format "%s %s" runner file-name))
      (t
@@ -246,6 +266,16 @@ If set to nil, keeps the buffer in the background."
         (message "Test output copied to clipboard."))
     (message "No test output buffer found.")))
 
+(defun tdd-mode-apply-color-to-buffer ()
+  "Reapply the mode-line color based on last test result when switching buffers."
+  (when tdd-mode-blink-enabled
+    (let ((color (if (eq tdd-mode-last-test-exit-code 0)
+                     tdd-mode-blink-pass-color
+                   tdd-mode-blink-fail-color)))
+      (tdd-mode-blink-mode-line color))))
+
+(add-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer)
+
 ;;;###autoload
 (define-minor-mode tdd-mode
   "Test-Driven Development mode for Python in Emacs."
@@ -255,9 +285,11 @@ If set to nil, keeps the buffer in the background."
       (progn
         (setq tdd-mode-original-mode-line-bg (face-background 'mode-line))
         (add-hook 'after-save-hook 'tdd-mode-after-save-handler nil t)
+        (add-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer nil t)
         (message "[tdd-mode] TDD Mode activated"))
     (remove-hook 'after-save-hook 'tdd-mode-after-save-handler t)
-    (tdd-mode-reset-mode-line-color)
+    (remove-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer t)
+    (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg)
     (message "[tdd-mode] TDD Mode deactivated")))
 
 (provide 'tdd-mode)
