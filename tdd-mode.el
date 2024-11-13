@@ -93,6 +93,15 @@ If set to nil, keeps the buffer in the background."
     map)
   "Keymap for `tdd-mode` commands.")
 
+;; Bind the `tdd-mode-command-map` to `C-c t` as a prefix key
+(defvar tdd-mode-prefix-map (make-sparse-keymap)
+  "Prefix map for TDD Mode commands.")
+(define-key tdd-mode-prefix-map (kbd "t") tdd-mode-command-map)
+(define-key tdd-mode-prefix-map (kbd "C-c t") tdd-mode-command-map)
+
+;; Set up `C-c t` as the prefix key
+(define-key tdd-mode-command-map (kbd "C-c t") tdd-mode-command-map)
+
 ;; Optional alert package
 (if (require 'alert nil 'noerror)
     (defvar tdd-mode-alert-enabled t
@@ -229,6 +238,18 @@ Adapted from pytest.el to mimic its test resolution."
       (locate-dominating-file default-directory ".git")
       default-directory))
 
+(defun tdd-mode-is-test-related-file ()
+  "Return t if current buffer is a .py file or test-related config file."
+  (let ((file-name (file-name-nondirectory (or (buffer-file-name) ""))))
+    (or (string-match-p "\\.py\\'" file-name)
+        (member file-name '("pyproject.toml" "pytest.ini" "tox.ini" "setup.cfg")))))
+
+(defun tdd-mode-after-save-handler ()
+  "Automatically rerun last test if configured and if buffer matches criteria."
+  (when (and tdd-mode-auto-run-on-save
+             (tdd-mode-is-test-related-file))
+    (tdd-mode-run-last-test)))
+
 (defun tdd-mode-display-output ()
   "Display the test output buffer based on `tdd-mode-buffer-popup` setting, applying ansi color."
   (with-current-buffer tdd-mode-test-buffer
@@ -250,12 +271,6 @@ Adapted from pytest.el to mimic its test resolution."
           (alert msg :title "TDD Mode" :severity 'high)
         (message msg))))))
 
-(defun tdd-mode-after-save-handler ()
-  "Automatically rerun last test if configured and if buffer matches file criteria."
-  (when (and tdd-mode-auto-run-on-save
-             (string-match-p "\\.py\\'" (buffer-file-name)))
-    (tdd-mode-run-last-test)))
-
 (defun tdd-mode-copy-output-to-clipboard ()
   "Copy the test output to the clipboard."
   (interactive)
@@ -265,7 +280,7 @@ Adapted from pytest.el to mimic its test resolution."
         (message "Test output copied to clipboard."))
     (message "No test output buffer found.")))
 
-(defun tdd-mode-apply-color-to-buffer ()
+(defun tdd-mode-apply-color-to-buffer (&rest _)
   "Reapply the mode-line color based on last test result when switching buffers."
   (when tdd-mode-blink-enabled
     (let ((color (if (eq tdd-mode-last-test-exit-code 0)
@@ -279,7 +294,9 @@ Adapted from pytest.el to mimic its test resolution."
 (define-minor-mode tdd-mode
   "Test-Driven Development mode for Python in Emacs."
   :lighter " TDD"
-  :keymap tdd-mode-command-map
+  :keymap (let ((map (make-sparse-keymap)))
+            (define-key map (kbd "C-c t") tdd-mode-command-map)
+            map)
   (if tdd-mode
       (progn
         (setq tdd-mode-original-mode-line-bg (face-background 'mode-line))
