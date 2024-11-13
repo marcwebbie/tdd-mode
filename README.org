@@ -1,0 +1,124 @@
+* tdd-mode - Modern TDD Mode for Python in Emacs
+   :PROPERTIES:
+   :CUSTOM_ID: tdd-mode
+   :END:
+
+** Overview
+`tdd-mode` is a minor mode for Emacs that supports test-driven development (TDD) in Python. It provides an efficient and modern workflow, with commands to quickly run tests at various levels, notifications on test pass/fail, and an optional mode-line blink for status indication.
+
+GitHub Repository: https://github.com/marcwebbie/tdd-mode
+
+** Features
+- **Run Tests at Point:** Execute tests at the current function, class, or file level.
+- **Run Last Test:** Re-run the last executed test command, ideal for quick iteration.
+- **Run All Tests:** Run all tests within the project root.
+- **Notifications:** Get alerts on test pass/fail, with optional mode-line blinking.
+- **Auto-run on Save:** Automatically re-run the last test upon saving files.
+- **Customizable Keymap:** Users can define their preferred keybinding, typically `C-c t` for TDD-related commands.
+
+** Installation
+You can install `tdd-mode` directly by cloning the repository or using a package manager such as `straight.el` or `use-package` with custom load paths.
+
+1. Clone the repository:
+   #+begin_src shell
+     git clone https://github.com/marcwebbie/tdd-mode ~/path/to/tdd-mode
+   #+end_src
+
+2. Add `tdd-mode` to your Emacs configuration:
+
+*** Using use-package with straight
+   #+begin_src emacs-lisp
+     (use-package tdd-mode
+       :straight (tdd-mode :type git :host github :repo "marcwebbie/tdd-mode")
+       :hook (python-mode . tdd-mode)
+       :bind-keymap ("C-c t" . tdd-mode-command-map)
+       :config
+       (setq tdd-mode-test-runner 'pytest
+             tdd-mode-notify-on-pass t
+             tdd-mode-notify-on-fail t
+             tdd-mode-auto-run-on-save t))
+   #+end_src
+
+*** Using use-package without straight
+   #+begin_src emacs-lisp
+     (use-package tdd-mode
+       :load-path "~/path/to/tdd-mode"
+       :hook (python-mode . tdd-mode)
+       :bind-keymap ("C-c t" . tdd-mode-command-map)
+       :config
+       (setq tdd-mode-test-runner 'pytest
+             tdd-mode-notify-on-pass t
+             tdd-mode-notify-on-fail t
+             tdd-mode-auto-run-on-save t))
+   #+end_src
+
+*** Spacemacs Configuration
+Add `tdd-mode` to the dotfile in your `python` layer:
+
+   #+begin_src emacs-lisp
+     (defun dotspacemacs/user-config ()
+       (use-package tdd-mode
+         :load-path "~/path/to/tdd-mode"
+         :hook (python-mode . tdd-mode)
+         :bind-keymap ("C-c t" . tdd-mode-command-map)
+         :config
+         (setq tdd-mode-test-runner 'pytest
+               tdd-mode-notify-on-pass t
+               tdd-mode-notify-on-fail t
+               tdd-mode-auto-run-on-save t)))
+   #+end_src
+
+** Configuration
+`tdd-mode` comes with several customizable options:
+
+| Option                      | Description                                            | Default Value     |
+|-----------------------------+--------------------------------------------------------+-------------------|
+| `tdd-mode-test-runner`      | Test runner to use (`pytest`, `nosetests`, `django`).  | `pytest`          |
+| `tdd-mode-notify-on-pass`   | Enable notifications when tests pass.                  | `t`               |
+| `tdd-mode-notify-on-fail`   | Enable notifications when tests fail.                  | `t`               |
+| `tdd-mode-auto-run-on-save` | Auto-run the last test on save for test-related files. | `t`               |
+| `tdd-mode-buffer-popup`     | Display the output buffer on each test run.            | `t`               |
+| `tdd-mode-blink-enabled`    | Blink mode-line on pass/fail status.                   | `t`               |
+| `tdd-mode-blink-fail-color` | Mode-line color for failures.                          | "#F44336" (red)   |
+| `tdd-mode-blink-pass-color` | Mode-line color for passes.                            | "#4CAF50" (green) |
+
+To configure these options, simply add custom values in your `.emacs` or `init.el`.
+
+** Usage
+After activating `tdd-mode` in a Python file, you can use the following commands:
+
+- **Run Test at Point:** `C-c t t`
+- **Run Last Test:** `C-c t r`
+- **Run All Tests:** `C-c t a`
+- **Copy Output to Clipboard:** `C-c t c`
+
+** Keymap
+The default keymap for `tdd-mode` is bound to `C-c t`, but users can configure this to their preference. Here's an example using a different prefix:
+
+#+begin_src emacs-lisp
+  (use-package tdd-mode
+    :load-path "~/path/to/tdd-mode"
+    :hook (python-mode . tdd-mode)
+    :bind-keymap ("C-c T" . tdd-mode-command-map)  ; Change prefix to C-c T
+    :config
+    (setq tdd-mode-test-runner 'pytest))
+#+end_src
+
+** Inspirations
+`tdd-mode` is inspired by several excellent Emacs packages:
+
+- [[https://github.com/Malabarba/beacon][beacon.el]]: for smooth visual feedback.
+- [[https://github.com/wbolster/emacs-pytest][pytest.el]]: providing similar functionality for Pytest users.
+- [[https://github.com/AdrieanKhisbe/auto-virtualenv][auto-virtualenv.el]]: for its ease in handling Python environments automatically.
+
+** License
+
+MIT License
+
+Copyright © 2024 Marcwebbie
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
