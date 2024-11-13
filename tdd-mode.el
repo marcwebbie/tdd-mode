@@ -198,16 +198,17 @@ Adapted from pytest.el to mimic its test resolution."
 (defun tdd-mode-run-test (command)
   "Run test COMMAND and display results in `tdd-mode-test-buffer`."
   (interactive)
-  (setq tdd-mode-last-test-command command)
-  (with-current-buffer (get-buffer-create tdd-mode-test-buffer)
-    (setq buffer-read-only nil)
-    (erase-buffer)
-    (insert (format "Running test command: %s\n\n" command))
-    (let ((exit-code (call-process-shell-command command nil tdd-mode-test-buffer t)))
-      (tdd-mode-display-output)
-      (tdd-mode-update-mode-line exit-code)
-      (tdd-mode-notify exit-code)
-      (setq buffer-read-only t))))
+  (let ((default-directory (tdd-mode-get-project-root))) ;; set project root
+    (setq tdd-mode-last-test-command command)
+    (with-current-buffer (get-buffer-create tdd-mode-test-buffer)
+      (setq buffer-read-only nil)
+      (erase-buffer)
+      (insert (format "Running test command: %s\n\n" command))
+      (let ((exit-code (call-process-shell-command command nil tdd-mode-test-buffer t)))
+        (tdd-mode-display-output)
+        (tdd-mode-update-mode-line exit-code)
+        (tdd-mode-notify exit-code)
+        (setq buffer-read-only t)))))
 
 (defun tdd-mode-run-test-at-point ()
   "Run the test at point (function, class, or file level)."
