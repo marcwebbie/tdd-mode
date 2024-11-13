@@ -90,17 +90,14 @@ If set to nil, keeps the buffer in the background."
     (define-key map (kbd "a") 'tdd-mode-run-all-tests)
     (define-key map (kbd "r") 'tdd-mode-run-last-test)
     (define-key map (kbd "c") 'tdd-mode-copy-output-to-clipboard)
+    (define-key map (kbd "d") 'tdd-mode-run-relevant-tests)  ;; New keybinding for diff-based relevant tests
     map)
   "Keymap for `tdd-mode` commands.")
 
-;; Bind the `tdd-mode-command-map` to `C-c t` as a prefix key
 (defvar tdd-mode-prefix-map (make-sparse-keymap)
   "Prefix map for TDD Mode commands.")
 (define-key tdd-mode-prefix-map (kbd "t") tdd-mode-command-map)
 (define-key tdd-mode-prefix-map (kbd "C-c t") tdd-mode-command-map)
-
-;; Set up `C-c t` as the prefix key
-(define-key tdd-mode-command-map (kbd "C-c t") tdd-mode-command-map)
 
 ;; Optional alert package
 (if (require 'alert nil 'noerror)
@@ -232,6 +229,21 @@ Adapted from pytest.el to mimic its test resolution."
   (let ((command (format "%s %s" (tdd-mode-get-runner) (tdd-mode-get-project-root))))
     (tdd-mode-log "Running all tests with command '%s'" command)
     (tdd-mode-run-test command)))
+
+(defun tdd-mode-run-relevant-tests ()
+  "Run the tests relevant to the changes in the git diff, only running Python test files."
+  (interactive)
+  (let* ((project-root (tdd-mode-get-project-root))
+         (changed-files (shell-command-to-string
+                         (format "git diff --name-only --diff-filter=AM HEAD^ | grep 'tests/.*\\.py$'")))
+         (test-files (split-string changed-files "\n" t)))
+    (when test-files
+      (let ((command (format "%s %s %s"
+                             (tdd-mode-get-runner)
+                             project-root
+                             (mapconcat 'identity test-files " "))))
+        (tdd-mode-log "Running relevant tests with command '%s'" command)
+        (tdd-mode-run-test command)))))
 
 (defun tdd-mode-get-project-root ()
   "Detect project root based on common markers."
