@@ -43,7 +43,7 @@ If set to nil, keeps the buffer in the background."
   :group 'tdd-mode)
 
 (defcustom tdd-mode-blink-enabled t
-  "If non-nil, enables mode-line blinking on test failures."
+  "If non-nil, enables mode-line blinking on test failures and success."
   :type 'boolean
   :group 'tdd-mode)
 
@@ -52,8 +52,13 @@ If set to nil, keeps the buffer in the background."
   :type 'string
   :group 'tdd-mode)
 
-(defcustom tdd-mode-blink-interval 0.6
-  "Interval in seconds for the mode-line blinking effect."
+(defcustom tdd-mode-blink-pass-color "#4CAF50"
+  "Color for the mode-line when a test passes."
+  :type 'string
+  :group 'tdd-mode)
+
+(defcustom tdd-mode-blink-duration 2.0
+  "Duration in seconds to hold the mode-line color when blinking."
   :type 'number
   :group 'tdd-mode)
 
@@ -94,22 +99,19 @@ If set to nil, keeps the buffer in the background."
   "Set the mode-line background color to COLOR."
   (set-face-background 'mode-line color))
 
-(defun tdd-mode-blink-failure-mode-line ()
-  "Blink the mode-line color to indicate test failure."
-  (when (timerp tdd-mode-failure-timer)
-    (cancel-timer tdd-mode-failure-timer))
-  (when tdd-mode-blink-enabled
-    (let ((blink-color tdd-mode-blink-fail-color))
-      (setq tdd-mode-failure-timer
-            (run-with-timer 0 tdd-mode-blink-interval
-                            (lambda ()
-                              (tdd-mode-set-mode-line-color
-                               (if (eq (face-background 'mode-line) blink-color)
-                                   tdd-mode-original-mode-line-bg
-                                 blink-color))))))))
+(defun tdd-mode-fade-mode-line (color)
+  "Slowly fade the mode-line color from COLOR back to the original color."
+  (tdd-mode-set-mode-line-color color)
+  (run-with-timer tdd-mode-blink-duration nil
+                  (lambda () (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg))))
+
+(defun tdd-mode-update-mode-line (exit-code)
+  "Update the mode line based on EXIT-CODE."
+  (let ((color (if (eq exit-code 0) tdd-mode-blink-pass-color tdd-mode-blink-fail-color)))
+    (tdd-mode-fade-mode-line color)))
 
 (defun tdd-mode-reset-mode-line-color ()
-  "Reset mode-line background to original color and stop blinking."
+  "Reset mode-line background to original color."
   (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg)
   (when (timerp tdd-mode-failure-timer)
     (cancel-timer tdd-mode-failure-timer)))
@@ -215,12 +217,6 @@ If set to nil, keeps the buffer in the background."
     (if tdd-mode-buffer-popup
         (display-buffer (current-buffer))
       (bury-buffer))))
-
-(defun tdd-mode-update-mode-line (exit-code)
-  "Update the mode line based on EXIT-CODE."
-  (if (eq exit-code 0)
-      (tdd-mode-reset-mode-line-color)
-    (tdd-mode-blink-failure-mode-line)))
 
 (defun tdd-mode-notify (exit-code)
   "Notify user based on EXIT-CODE and user preferences."
