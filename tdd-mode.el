@@ -88,10 +88,13 @@ If set to nil, keeps the buffer in the background."
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "t") 'tdd-mode-run-test-at-point)
     (define-key map (kbd "a") 'tdd-mode-run-all-tests)
-    (define-key map (kbd "r") 'tdd-mode-run-last-test)
+    (define-key map (kbd "l") 'tdd-mode-run-last-test)
     (define-key map (kbd "c") 'tdd-mode-copy-output-to-clipboard)
-    (define-key map (kbd "d") 'tdd-mode-run-relevant-tests)  ;; New keybinding for diff-based relevant tests
-    (define-key map (kbd "f") 'tdd-mode-run-file-tests)      ;; New keybinding for running tests on file/module
+    (define-key map (kbd "r") 'tdd-mode-run-relevant-tests)
+    (define-key map (kbd "f") 'tdd-mode-run-file-tests)
+    (define-key map (kbd "p") 'tdd-mode-copy-test-command-to-clipboard)
+    (define-key map (kbd "b") 'tdd-mode-insert-ipdb-breakpoint)
+    (define-key map (kbd "B") 'tdd-mode-insert-pudb-breakpoint)
     map)
   "Keymap for `tdd-mode` commands.")
 
@@ -139,14 +142,14 @@ If set to nil, keeps the buffer in the background."
                                      start-color end-color))))
 
 (defun tdd-mode-update-mode-line (exit-code)
-  "Update the mode line based on EXIT-CODE."
-  (setq tdd-mode-last-test-exit-code exit-code)
-  (let ((color (if (eq exit-code 0) tdd-mode-blink-pass-color tdd-mode-blink-fail-color)))
-    (tdd-mode-blink-mode-line color)))
+  "Update the mode line based on EXIT-CODE only if a test was run."
+  (when tdd-mode-last-test-command  ;; Ensure test command exists
+    (setq tdd-mode-last-test-exit-code exit-code)
+    (let ((color (if (eq exit-code 0) tdd-mode-blink-pass-color tdd-mode-blink-fail-color)))
+      (tdd-mode-blink-mode-line color))))
 
 (defun tdd-mode--get-testable ()
-  "Get the testable entity at point (function, class, or file).
-Adapted from pytest.el to mimic its test resolution."
+  "Get the testable entity at point (function, class, or file)."
   (let* ((inner-obj (tdd-mode--inner-testable))
          (outer (tdd-mode--outer-testable))
          (outer-def (car outer))
@@ -199,8 +202,26 @@ Adapted from pytest.el to mimic its test resolution."
       (executable-find "python3")
       "python3"))
 
+(defun tdd-mode-copy-test-command-to-clipboard ()
+  "Copy the test command at point to the clipboard without running it."
+  (interactive)
+  (let ((test-command (tdd-mode-get-test-command)))
+    (setq tdd-mode-last-test-command test-command)
+    (kill-new test-command)
+    (message "Copied test command to clipboard: %s" test-command)))
+
+(defun tdd-mode-insert-pudb-breakpoint ()
+  "Insert a pudb breakpoint at the current line."
+  (interactive)
+  (insert "import pudb; pudb.set_trace()"))
+
+(defun tdd-mode-insert-ipdb-breakpoint ()
+  "Insert a pudb breakpoint at the current line."
+  (interactive)
+  (insert "import ipdb; ipdb.set_trace()"))
+
 (defun tdd-mode-run-test (command)
-  "Run test COMMAND and display results in `tdd-mode-test-buffer`."
+  "Run test COMMAND asynchronously and display results in `tdd-mode-test-buffer`."
   (interactive)
   (let ((default-directory (tdd-mode-get-project-root))) ;; set project root
     (setq tdd-mode-last-test-command command)
@@ -208,11 +229,40 @@ Adapted from pytest.el to mimic its test resolution."
       (setq buffer-read-only nil)
       (erase-buffer)
       (insert (format "Running test command: %s\n\n" command))
-      (let ((exit-code (call-process-shell-command command nil tdd-mode-test-buffer t)))
-        (tdd-mode-display-output)
-        (tdd-mode-update-mode-line exit-code)
-        (tdd-mode-notify exit-code)
+      (let ((process (start-process-shell-command
+                      "tdd-mode-test-process" tdd-mode-test-buffer command)))
+        (set-process-sentinel process 'tdd-mode-test-sentinel)))))
+
+(defun tdd-mode-test-sentinel (process event)
+  "Handle the process sentinel for async test execution, processing EVENT."
+  (when (eq (process-status process) 'exit)
+    (let ((exit-code (process-exit-status process)))
+      (tdd-mode-display-output)
+      (tdd-mode-update-mode-line exit-code)
+      (tdd-mode-notify exit-code)
+      (with-current-buffer tdd-mode-test-buffer
         (setq buffer-read-only t)))))
+
+(defun tdd-mode-display-output ()
+  "Display the test output buffer based on `tdd-mode-buffer-popup` setting, applying ansi color."
+  (with-current-buffer tdd-mode-test-buffer
+    (ansi-color-apply-on-region (point-min) (point-max))
+    (if tdd-mode-buffer-popup
+        (display-buffer (current-buffer))
+      (bury-buffer))))
+
+(defun tdd-mode-notify (exit-code)
+  "Notify user based on EXIT-CODE and user preferences."
+  (let ((msg (if (eq exit-code 0) "✅ Tests Passed!" "❌ Tests Failed!")))
+    (cond
+     ((and tdd-mode-notify-on-pass (eq exit-code 0))
+      (if tdd-mode-alert-enabled
+          (alert msg :title "TDD Mode" :severity 'normal)
+        (message msg)))
+     ((and tdd-mode-notify-on-fail (not (eq exit-code 0)))
+      (if tdd-mode-alert-enabled
+          (alert msg :title "TDD Mode" :severity 'high)
+        (message msg))))))
 
 (defun tdd-mode-run-test-at-point ()
   "Run the test at point (function, class, or file level)."
@@ -308,11 +358,13 @@ Adapted from pytest.el to mimic its test resolution."
     (message "No test output buffer found.")))
 
 (defun tdd-mode-apply-color-to-buffer (&rest _)
-  "Reapply the mode-line color based on last test result when switching buffers."
+  "Reapply the mode-line color based on the last test result when switching buffers."
   (when tdd-mode-blink-enabled
-    (let ((color (if (eq tdd-mode-last-test-exit-code 0)
-                     tdd-mode-blink-pass-color
-                   tdd-mode-blink-fail-color)))
+    (let ((color (if tdd-mode-last-test-command  ;; Only apply color changes after a test was run
+                     (if (eq tdd-mode-last-test-exit-code 0)
+                         tdd-mode-blink-pass-color  ;; Green for pass
+                       tdd-mode-blink-fail-color)  ;; Red for fail
+                   tdd-mode-original-mode-line-bg)))  ;; Default color before any test
       (tdd-mode-blink-mode-line color))))
 
 (add-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer)
