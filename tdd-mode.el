@@ -96,6 +96,7 @@ If set to nil, keeps the buffer in the background."
     (define-key map (kbd "p") 'tdd-mode-copy-test-command-to-clipboard)
     (define-key map (kbd "b") 'tdd-mode-insert-ipdb-breakpoint)
     (define-key map (kbd "B") 'tdd-mode-insert-pudb-breakpoint)
+    (define-key map (kbd "C") 'tdd-mode-copy-diff-and-output)
     map)
   "Keymap for `tdd-mode` commands.")
 
@@ -131,7 +132,9 @@ If set to nil, keeps the buffer in the background."
           (run-with-timer 0 tdd-mode-blink-interval
                           (lambda ()
                             (if (null step-colors)
-                                (cancel-timer tdd-mode-fade-timer)
+                                (progn
+                                  (cancel-timer tdd-mode-fade-timer)
+                                  (setq tdd-mode-fade-timer nil))
                               (tdd-mode-set-mode-line-color (pop step-colors))))))))
 
 (defun tdd-mode-generate-fade-colors (start-color end-color steps)
@@ -213,14 +216,16 @@ If set to nil, keeps the buffer in the background."
     (message "Copied test command to clipboard: %s" test-command)))
 
 (defun tdd-mode-insert-pudb-breakpoint ()
-  "Insert a pudb breakpoint at the current line."
+  "Insert a pudb breakpoint at the current line and disable tdd-mode."
   (interactive)
-  (insert "import pudb; pudb.set_trace()"))
+  (insert "import pudb; pudb.set_trace()")
+  (tdd-mode -1))
 
 (defun tdd-mode-insert-ipdb-breakpoint ()
-  "Insert an ipdb breakpoint at the current line."
+  "Insert an ipdb breakpoint at the current line and disable tdd-mode."
   (interactive)
-  (insert "import ipdb; ipdb.set_trace()"))
+  (insert "import ipdb; ipdb.set_trace()")
+  (tdd-mode -1))
 
 (defun tdd-mode-display-test-output-buffer ()
   "Display the test output buffer in a non-intrusive way."
@@ -315,6 +320,7 @@ MSG is the message string."
   "Run the tests relevant to the changes in the git diff, only running Python test files."
   (interactive)
   (let* ((project-root (tdd-mode-get-project-root))
+         (default-directory project-root)
          (changed-files (shell-command-to-string
                          "git diff --name-only --diff-filter=AM HEAD^ | grep 'tests/.*\\.py$'"))
          (test-files (split-string changed-files "\n" t)))
@@ -361,9 +367,22 @@ MSG is the message string."
         (message "Test output copied to clipboard."))
     (message "No test output buffer found.")))
 
+(defun tdd-mode-copy-diff-and-output ()
+  "Copy the git diff of the project and the test output to the clipboard."
+  (interactive)
+  (let* ((project-root (tdd-mode-get-project-root))
+         (default-directory project-root)
+         (diff (shell-command-to-string "git diff"))
+         (test-output (if (get-buffer tdd-mode-test-buffer)
+                          (with-current-buffer tdd-mode-test-buffer
+                            (buffer-substring-no-properties (point-min) (point-max)))
+                        "No test output found.")))
+    (kill-new (format "Diff:\n\n%s\n\nTest output:\n\n%s" diff test-output))
+    (message "Copied diff and test output to clipboard.")))
+
 (defun tdd-mode-apply-color-to-buffer (&rest _)
   "Reapply the mode-line color based on the last test result when switching buffers."
-  (when tdd-mode-blink-enabled
+  (when (and tdd-mode tdd-mode-blink-enabled)
     (let ((color (cond
                   ((null tdd-mode-last-test-exit-code)
                    tdd-mode-original-mode-line-bg)
@@ -373,8 +392,6 @@ MSG is the message string."
                    tdd-mode-blink-fail-color))))
       (tdd-mode-set-mode-line-color color))))
 
-(add-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer nil t)
-
 ;;;###autoload
 (define-minor-mode tdd-mode
   "Test-Driven Development mode for Python in Emacs."
@@ -382,13 +399,23 @@ MSG is the message string."
   :keymap (let ((map (make-sparse-keymap)))
             (define-key map (kbd "C-c t") tdd-mode-command-map)
             map)
+  :global t
   (if tdd-mode
       (progn
         (setq tdd-mode-original-mode-line-bg (face-background 'mode-line))
-        (add-hook 'after-save-hook 'tdd-mode-after-save-handler nil t)
+        (add-hook 'after-save-hook 'tdd-mode-after-save-handler)
+        (add-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer)
         (message "[tdd-mode] TDD Mode activated"))
-    (remove-hook 'after-save-hook 'tdd-mode-after-save-handler t)
+    ;; Deactivation code
+    (remove-hook 'after-save-hook 'tdd-mode-after-save-handler)
+    (remove-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer)
+    (when (timerp tdd-mode-fade-timer)
+      (cancel-timer tdd-mode-fade-timer)
+      (setq tdd-mode-fade-timer nil))
+    ;; Reset the mode-line color
     (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg)
+    ;; Reset last test exit code
+    (setq tdd-mode-last-test-exit-code nil)
     (message "[tdd-mode] TDD Mode deactivated")))
 
 (provide 'tdd-mode)
