@@ -5,6 +5,7 @@
 (require 'subr-x)
 (require 'color)
 (require 'python)
+(require 'compile)
 
 (defgroup tdd-mode nil
   "Test-Driven Development mode for Python projects in Emacs."
@@ -142,11 +143,12 @@ If set to nil, keeps the buffer in the background."
                                      start-color end-color))))
 
 (defun tdd-mode-update-mode-line (exit-code)
-  "Update the mode line based on EXIT-CODE only if a test was run."
-  (when tdd-mode-last-test-command  ;; Ensure test command exists
-    (setq tdd-mode-last-test-exit-code exit-code)
-    (let ((color (if (eq exit-code 0) tdd-mode-blink-pass-color tdd-mode-blink-fail-color)))
-      (tdd-mode-blink-mode-line color))))
+  "Update the mode-line color based on the last test EXIT-CODE."
+  (setq tdd-mode-last-test-exit-code exit-code)
+  (let ((color (if (eq exit-code 0)
+                   tdd-mode-blink-pass-color
+                 tdd-mode-blink-fail-color)))
+    (tdd-mode-blink-mode-line color)))
 
 (defun tdd-mode--get-testable ()
   "Get the testable entity at point (function, class, or file)."
@@ -216,40 +218,63 @@ If set to nil, keeps the buffer in the background."
   (insert "import pudb; pudb.set_trace()"))
 
 (defun tdd-mode-insert-ipdb-breakpoint ()
-  "Insert a pudb breakpoint at the current line."
+  "Insert an ipdb breakpoint at the current line."
   (interactive)
   (insert "import ipdb; ipdb.set_trace()"))
 
+(defun tdd-mode-display-test-output-buffer ()
+  "Display the test output buffer in a non-intrusive way."
+  (let ((buffer (get-buffer-create tdd-mode-test-buffer))
+        (current-window (selected-window)))
+    ;; Display the buffer without switching focus
+    (display-buffer buffer '((display-buffer-reuse-window
+                              display-buffer-in-side-window)
+                             (side . right)
+                             (slot . 0)
+                             (window-width . 0.5)))
+    ;; Ensure the focus remains on the original window
+    (select-window current-window)))
+
+(defun tdd-mode--compilation-filter ()
+  "Apply ANSI colors to the compilation buffer."
+  (when (eq major-mode 'tdd-mode-compilation-mode)
+    (let ((inhibit-read-only t))
+      (ansi-color-apply-on-region compilation-filter-start (point-max)))))
+
+(defun tdd-mode--compilation-exit-message (process-status exit-status msg)
+  "Handle the exit message of the compilation process.
+PROCESS-STATUS is a symbol describing how the process finished.
+EXIT-STATUS is the exit code or signal number.
+MSG is the message string."
+  (let ((exit-code (if (numberp exit-status) exit-status 1)))
+    (tdd-mode-update-mode-line exit-code)
+    (tdd-mode-notify exit-code)
+    ;; Return the default message
+    (cons msg exit-status)))
+
+(define-derived-mode tdd-mode-compilation-mode compilation-mode "TDD-Compilation"
+  "Compilation mode for TDD Mode.")
+
 (defun tdd-mode-run-test (command)
-  "Run test COMMAND asynchronously and display results in `tdd-mode-test-buffer`."
+  "Run the test COMMAND using compilation-mode."
   (interactive)
-  (let ((default-directory (tdd-mode-get-project-root))) ;; set project root
-    (setq tdd-mode-last-test-command command)
-    (with-current-buffer (get-buffer-create tdd-mode-test-buffer)
-      (setq buffer-read-only nil)
-      (erase-buffer)
-      (insert (format "Running test command: %s\n\n" command))
-      (let ((process (start-process-shell-command
-                      "tdd-mode-test-process" tdd-mode-test-buffer command)))
-        (set-process-sentinel process 'tdd-mode-test-sentinel)))))
-
-(defun tdd-mode-test-sentinel (process event)
-  "Handle the process sentinel for async test execution, processing EVENT."
-  (when (eq (process-status process) 'exit)
-    (let ((exit-code (process-exit-status process)))
-      (tdd-mode-display-output)
-      (tdd-mode-update-mode-line exit-code)
-      (tdd-mode-notify exit-code)
-      (with-current-buffer tdd-mode-test-buffer
-        (setq buffer-read-only t)))))
-
-(defun tdd-mode-display-output ()
-  "Display the test output buffer based on `tdd-mode-buffer-popup` setting, applying ansi color."
-  (with-current-buffer tdd-mode-test-buffer
-    (ansi-color-apply-on-region (point-min) (point-max))
-    (if tdd-mode-buffer-popup
-        (display-buffer (current-buffer))
-      (bury-buffer))))
+  (setq tdd-mode-last-test-command command)
+  (setq tdd-mode-last-test-exit-code nil)
+  (tdd-mode-log "Running test: %s" command)
+  (let ((compilation-buffer-name-function (lambda (mode)
+                                            tdd-mode-test-buffer))
+        (default-directory (tdd-mode-get-project-root))
+        ;; Set environment variables for color support
+        (compilation-environment '("TERM=xterm-256color" "PYTHONUNBUFFERED=1")))
+    (let ((compilation-buffer
+           (compilation-start command 'tdd-mode-compilation-mode)))
+      ;; Apply ANSI colors
+      (with-current-buffer compilation-buffer
+        ;; Set the exit message function
+        (setq-local compilation-exit-message-function #'tdd-mode--compilation-exit-message)
+        (add-hook 'compilation-filter-hook 'tdd-mode--compilation-filter nil t)))
+    ;; Display the test output buffer without switching focus
+    (tdd-mode-display-test-output-buffer)))
 
 (defun tdd-mode-notify (exit-code)
   "Notify user based on EXIT-CODE and user preferences."
@@ -268,7 +293,6 @@ If set to nil, keeps the buffer in the background."
   "Run the test at point (function, class, or file level)."
   (interactive)
   (let ((test-command (tdd-mode-get-test-command)))
-    (tdd-mode-log "Running test at point with command `%s`" test-command)
     (tdd-mode-run-test test-command)))
 
 (defun tdd-mode-run-last-test ()
@@ -292,15 +316,16 @@ If set to nil, keeps the buffer in the background."
   (interactive)
   (let* ((project-root (tdd-mode-get-project-root))
          (changed-files (shell-command-to-string
-                         (format "git diff --name-only --diff-filter=AM HEAD^ | grep 'tests/.*\\.py$'")))
+                         "git diff --name-only --diff-filter=AM HEAD^ | grep 'tests/.*\\.py$'"))
          (test-files (split-string changed-files "\n" t)))
-    (when test-files
-      (let ((command (format "%s %s %s"
-                             (tdd-mode-get-runner)
-                             project-root
-                             (mapconcat 'identity test-files " "))))
-        (tdd-mode-log "Running relevant tests with command '%s'" command)
-        (tdd-mode-run-test command)))))
+    (if test-files
+        (let ((command (format "%s %s %s"
+                               (tdd-mode-get-runner)
+                               project-root
+                               (mapconcat 'identity test-files " "))))
+          (tdd-mode-log "Running relevant tests with command '%s'" command)
+          (tdd-mode-run-test command))
+      (message "No relevant test files found."))))
 
 (defun tdd-mode-run-file-tests ()
   "Run tests on the current file/module."
@@ -327,27 +352,6 @@ If set to nil, keeps the buffer in the background."
              (tdd-mode-is-test-related-file))
     (tdd-mode-run-last-test)))
 
-(defun tdd-mode-display-output ()
-  "Display the test output buffer based on `tdd-mode-buffer-popup` setting, applying ansi color."
-  (with-current-buffer tdd-mode-test-buffer
-    (ansi-color-apply-on-region (point-min) (point-max))
-    (if tdd-mode-buffer-popup
-        (display-buffer (current-buffer))
-      (bury-buffer))))
-
-(defun tdd-mode-notify (exit-code)
-  "Notify user based on EXIT-CODE and user preferences."
-  (let ((msg (if (eq exit-code 0) "✅ Tests Passed!" "❌ Tests Failed!")))
-    (cond
-     ((and tdd-mode-notify-on-pass (eq exit-code 0))
-      (if tdd-mode-alert-enabled
-          (alert msg :title "TDD Mode" :severity 'normal)
-        (message msg)))
-     ((and tdd-mode-notify-on-fail (not (eq exit-code 0)))
-      (if tdd-mode-alert-enabled
-          (alert msg :title "TDD Mode" :severity 'high)
-        (message msg))))))
-
 (defun tdd-mode-copy-output-to-clipboard ()
   "Copy the test output to the clipboard."
   (interactive)
@@ -360,14 +364,16 @@ If set to nil, keeps the buffer in the background."
 (defun tdd-mode-apply-color-to-buffer (&rest _)
   "Reapply the mode-line color based on the last test result when switching buffers."
   (when tdd-mode-blink-enabled
-    (let ((color (if tdd-mode-last-test-command  ;; Only apply color changes after a test was run
-                     (if (eq tdd-mode-last-test-exit-code 0)
-                         tdd-mode-blink-pass-color  ;; Green for pass
-                       tdd-mode-blink-fail-color)  ;; Red for fail
-                   tdd-mode-original-mode-line-bg)))  ;; Default color before any test
-      (tdd-mode-blink-mode-line color))))
+    (let ((color (cond
+                  ((null tdd-mode-last-test-exit-code)
+                   tdd-mode-original-mode-line-bg)
+                  ((eq tdd-mode-last-test-exit-code 0)
+                   tdd-mode-blink-pass-color)
+                  (t
+                   tdd-mode-blink-fail-color))))
+      (tdd-mode-set-mode-line-color color))))
 
-(add-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer)
+(add-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer nil t)
 
 ;;;###autoload
 (define-minor-mode tdd-mode
@@ -380,10 +386,8 @@ If set to nil, keeps the buffer in the background."
       (progn
         (setq tdd-mode-original-mode-line-bg (face-background 'mode-line))
         (add-hook 'after-save-hook 'tdd-mode-after-save-handler nil t)
-        (add-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer nil t)
         (message "[tdd-mode] TDD Mode activated"))
     (remove-hook 'after-save-hook 'tdd-mode-after-save-handler t)
-    (remove-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer t)
     (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg)
     (message "[tdd-mode] TDD Mode deactivated")))
 
