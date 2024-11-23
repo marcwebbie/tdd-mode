@@ -228,23 +228,28 @@ If set to nil, keeps the buffer in the background."
   (tdd-mode -1))
 
 (defun tdd-mode-display-test-output-buffer ()
-  "Display the test output buffer in a non-intrusive way."
-  (let ((buffer (get-buffer-create tdd-mode-test-buffer))
-        (current-window (selected-window)))
+  "Display the test output buffer and ensure it's scrolled to the end."
+  (let ((buffer (get-buffer-create tdd-mode-test-buffer)))
     ;; Display the buffer without switching focus
     (display-buffer buffer '((display-buffer-reuse-window
                               display-buffer-in-side-window)
                              (side . right)
                              (slot . 0)
                              (window-width . 0.5)))
-    ;; Ensure the focus remains on the original window
-    (select-window current-window)))
+    ;; Scroll to the end of the buffer
+    (with-current-buffer buffer
+      (goto-char (point-max)))))
 
 (defun tdd-mode--compilation-filter ()
-  "Apply ANSI colors to the compilation buffer."
+  "Scroll to the end of the `*tdd-output*` buffer after processing output."
   (when (eq major-mode 'tdd-mode-compilation-mode)
     (let ((inhibit-read-only t))
-      (ansi-color-apply-on-region compilation-filter-start (point-max)))))
+      (ansi-color-apply-on-region compilation-filter-start (point-max))
+      ;; Scroll to the end of the buffer
+      (goto-char (point-max))
+      ;; Ensure window scrolls with point
+      (with-selected-window (get-buffer-window tdd-mode-test-buffer)
+        (set-window-point (selected-window) (point-max))))))
 
 (defun tdd-mode--compilation-exit-message (process-status exit-status msg)
   "Handle the exit message of the compilation process.
@@ -261,7 +266,7 @@ MSG is the message string."
   "Compilation mode for TDD Mode.")
 
 (defun tdd-mode-run-test (command)
-  "Run the test COMMAND using compilation-mode."
+  "Run the test COMMAND using compilation-mode and ensure the output scrolls."
   (interactive)
   (setq tdd-mode-last-test-command command)
   (setq tdd-mode-last-test-exit-code nil)
@@ -269,13 +274,14 @@ MSG is the message string."
   (let ((compilation-buffer-name-function (lambda (mode)
                                             tdd-mode-test-buffer))
         (default-directory (tdd-mode-get-project-root))
+        ;; Ensure output scrolls automatically
+        (compilation-scroll-output t)
         ;; Set environment variables for color support
         (compilation-environment '("TERM=xterm-256color" "PYTHONUNBUFFERED=1")))
     (let ((compilation-buffer
            (compilation-start command 'tdd-mode-compilation-mode)))
-      ;; Apply ANSI colors
+      ;; Apply ANSI colors and scroll to the end
       (with-current-buffer compilation-buffer
-        ;; Set the exit message function
         (setq-local compilation-exit-message-function #'tdd-mode--compilation-exit-message)
         (add-hook 'compilation-filter-hook 'tdd-mode--compilation-filter nil t)))
     ;; Display the test output buffer without switching focus
