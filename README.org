@@ -17,8 +17,8 @@
     <a href="https://github.com/marcwebbie/tdd-mode/actions">
         <img src="https://img.shields.io/github/actions/workflow/status/marcwebbie/tdd-mode/tests.yml?label=Build&color=brightgreen" alt="Build status">
     </a>
-    <a href="https://github.com/marcwebbie/tdd-mode/blob/main/LICENSE">
-        <img src="https://img.shields.io/github/license/marcwebbie/tdd-mode?color=blue" alt="License">
+    <a href="https://opensource.org/licenses/MIT">
+        <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
     </a>
 </div>
 #+END_HTML
@@ -89,7 +89,51 @@ You can install `tdd-mode` directly by cloning the repository or using a package
         tdd-mode-scroll-output t))
 #+END_SRC
 
-...
+** Using use-package without straight.el
+#+BEGIN_SRC emacs-lisp
+(use-package tdd-mode
+  :load-path "~/path/to/tdd-mode"
+  :hook (python-mode . tdd-mode)
+  :bind-keymap ("C-c t" . tdd-mode-command-map)
+  :config
+  (setq tdd-mode-test-runner 'pytest
+        tdd-mode-notify-on-pass t
+        tdd-mode-notify-on-fail t
+        tdd-mode-auto-run-on-save t
+        tdd-mode-scroll-output t))
+#+END_SRC
+
+* Configuration
+`tdd-mode` comes with several customizable options:
+
+| Option                      | Description                                            | Default Value     |
+|-----------------------------+--------------------------------------------------------+-------------------|
+| `tdd-mode-test-runner`      | Test runner to use (`pytest`, `nosetests`, `django`).  | `pytest`          |
+| `tdd-mode-notify-on-pass`   | Enable notifications when tests pass.                  | `t`               |
+| `tdd-mode-notify-on-fail`   | Enable notifications when tests fail.                  | `t`               |
+| `tdd-mode-auto-run-on-save` | Auto-run the last test on save for test-related files. | `t`               |
+| `tdd-mode-scroll-output`    | Auto-scroll the `*tdd-output*` buffer to follow output.| `t`               |
+
+* Keybindings
+Here are the default keybindings for `tdd-mode`:
+
+| Keybinding  | Command                                      | Description                                     |
+|-------------+---------------------------------------------+------------------------------------------------|
+| ~C-c t t~   | `tdd-mode-run-test-at-point`                | Run the test at the current point.             |
+| ~C-c t f~   | `tdd-mode-run-file-tests`                   | Run all tests in the current file.             |
+| ~C-c t a~   | `tdd-mode-run-all-tests`                    | Run all tests in the project.                  |
+| ~C-c t r~   | `tdd-mode-run-relevant-tests`               | Run tests based on changes in Git.             |
+| ~C-c t l~   | `tdd-mode-run-last-test`                    | Re-run the last executed test command.         |
+| ~C-c t c~   | `tdd-mode-copy-output-to-clipboard`         | Copy the test output to the clipboard.         |
+| ~C-c t b~   | `tdd-mode-insert-ipdb-breakpoint`           | Insert an `ipdb` breakpoint.                   |
+| ~C-c t B~   | `tdd-mode-insert-pudb-breakpoint`           | Insert a `pudb` breakpoint.                    |
+
+* Inspirations
+`tdd-mode` draws inspiration from several excellent Emacs packages:
+
+- [[https://github.com/Malabarba/beacon][beacon.el]]: Smooth visual feedback.
+- [[https://github.com/wbolster/emacs-pytest][pytest.el]]: Pytest utilities for Emacs.
+- [[https://github.com/AdrieanKhisbe/auto-virtualenv][auto-virtualenv.el]]: Automatic Python environment handling.
 
 * License
 
@@ -97,6 +141,6 @@ MIT License
 
 Copyright © 2024 Marcwebbie
 
-See the full license in the [[https://github.com/marcwebbie/tdd-mode/blob/main/LICENSE][LICENSE file]].
+See the full license in the [[https://opensource.org/licenses/MIT][LICENSE file]].
 
 ---
