@@ -11,11 +11,17 @@
     <a href="https://github.com/marcwebbie/tdd-mode">
         <img src="https://img.shields.io/github/stars/marcwebbie/tdd-mode?style=social" alt="GitHub stars">
     </a>
+    <a href="https://github.com/marcwebbie/tdd-mode">
+        <img src="https://img.shields.io/github/stars/marcwebbie/tdd-mode?style=social" alt="GitHub stars">
+    </a>
+    <a href="https://github.com/marcwebbie/tdd-mode">
+        <img alt="GitHub forks" src="https://img.shields.io/github/forks/marcwebbie/tdd-mode">
+    </a>
     <a href="https://github.com/marcwebbie/tdd-mode/issues">
         <img src="https://img.shields.io/github/issues/marcwebbie/tdd-mode?color=blue&label=Issues" alt="GitHub issues">
     </a>
     <a href="https://github.com/marcwebbie/tdd-mode/actions">
-        <img src="https://img.shields.io/github/actions/workflow/status/marcwebbie/tdd-mode/tests.yml?label=Build&color=brightgreen" alt="Build status">
+        <img src="https://img.shields.io/github/contributors/marcwebbie/tdd-mode" alt="Contributors">
     </a>
     <a href="https://opensource.org/licenses/MIT">
         <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
@@ -24,18 +30,18 @@
 #+END_HTML
 
 * Overview
-`tdd-mode` is a powerful Emacs minor mode tailored for Python developers practicing test-driven development (TDD). It simplifies the TDD workflow with features like test execution at point, error navigation, mode-line feedback, and notifications.
+~tdd-mode~ is a powerful Emacs minor mode tailored for Python developers practicing test-driven development (TDD). It simplifies the TDD workflow with features like test execution at point, error navigation, mode-line feedback, and notifications.
 
-- **GitHub Repository**: [[https://github.com/marcwebbie/tdd-mode][tdd-mode]]
+- *GitHub Repository*: [[https://github.com/marcwebbie/tdd-mode][tdd-mode]]
 
 * Features
-- **Run Tests at Point**: Execute tests for the current function or class.
-- **Error Navigation**: Skip external files and jump directly to errors in your project.
-- **Run Relevant Tests**: Automatically detect changes in Git and run corresponding tests.
-- **Notifications**: Alerts on test pass/fail, with optional mode-line blinking.
-- **Auto Test on Save**: Automatically re-run the last test after saving a file.
-- **Breakpoint Insertion**: Quickly insert `ipdb` or `pudb` breakpoints.
-- **Customizable Keymap**: Easily redefine keybindings for TDD commands.
+- *Run Tests at Point*: Execute tests for the current function or class.
+- *Error Navigation*: Skip external files and jump directly to errors in your project.
+- *Run Relevant Tests*: Automatically detect changes in Git and run corresponding tests.
+- *Notifications*: Alerts on test pass/fail, with optional mode-line blinking.
+- *Auto Test on Save*: Automatically re-run the last test after saving a file.
+- *Breakpoint Insertion*: Quickly insert `ipdb` or `pudb` breakpoints.
+- *Customizable Keymap*: Easily redefine keybindings for TDD commands.
 
 * Quickstart Tutorial
 ** Step 1: Install TDD Mode
