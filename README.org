@@ -3,10 +3,6 @@
 #+HTML_HEAD: <style>h2 { text-align: center; } .shields { text-align: center; margin-bottom: 20px; } .center { text-align: center; } </style>
 
 #+BEGIN_HTML
-<h2 align="center">
-    TDD Mode: Modern Test-Driven Development for Python in Emacs
-</h2>
-
 <div class="shields">
     <a href="https://github.com/marcwebbie/tdd-mode">
         <img src="https://img.shields.io/github/stars/marcwebbie/tdd-mode?style=social" alt="GitHub stars">
