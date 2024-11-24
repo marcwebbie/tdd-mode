@@ -70,6 +70,11 @@ If set to nil, keeps the buffer in the background."
   :type 'number
   :group 'tdd-mode)
 
+(defcustom tdd-mode-scroll-output t
+  "If non-nil, the compilation buffer will automatically scroll to follow output."
+  :type 'boolean
+  :group 'tdd-mode)
+
 (defvar tdd-mode-test-buffer "*tdd-output*"
   "Buffer for displaying test output.")
 
@@ -218,13 +223,13 @@ If set to nil, keeps the buffer in the background."
 (defun tdd-mode-insert-pudb-breakpoint ()
   "Insert a pudb breakpoint at the current line and disable tdd-mode."
   (interactive)
-  (insert "import pudb; pudb.set_trace()")
+  (insert "import pudb; pudb.set_trace() # fmt: off")
   (tdd-mode -1))
 
 (defun tdd-mode-insert-ipdb-breakpoint ()
   "Insert an ipdb breakpoint at the current line and disable tdd-mode."
   (interactive)
-  (insert "import ipdb; ipdb.set_trace()")
+  (insert "import ipdb; ipdb.set_trace() # fmt: off")
   (tdd-mode -1))
 
 (defun tdd-mode-display-test-output-buffer ()
@@ -236,20 +241,22 @@ If set to nil, keeps the buffer in the background."
                              (side . right)
                              (slot . 0)
                              (window-width . 0.5)))
-    ;; Scroll to the end of the buffer
-    (with-current-buffer buffer
-      (goto-char (point-max)))))
+    ;; Scroll to the end of the buffer if enabled
+    (when tdd-mode-scroll-output
+      (with-current-buffer buffer
+        (goto-char (point-max))))))
 
 (defun tdd-mode--compilation-filter ()
-  "Scroll to the end of the `*tdd-output*` buffer after processing output."
+  "Process the output of the compilation buffer."
   (when (eq major-mode 'tdd-mode-compilation-mode)
     (let ((inhibit-read-only t))
       (ansi-color-apply-on-region compilation-filter-start (point-max))
-      ;; Scroll to the end of the buffer
-      (goto-char (point-max))
-      ;; Ensure window scrolls with point
-      (with-selected-window (get-buffer-window tdd-mode-test-buffer)
-        (set-window-point (selected-window) (point-max))))))
+      (when tdd-mode-scroll-output
+        ;; Scroll to the end of the buffer
+        (goto-char (point-max))
+        ;; Ensure window scrolls with point
+        (with-selected-window (get-buffer-window tdd-mode-test-buffer)
+          (set-window-point (selected-window) (point-max)))))))
 
 (defun tdd-mode--compilation-exit-message (process-status exit-status msg)
   "Handle the exit message of the compilation process.
@@ -276,8 +283,7 @@ MSG is the message string."
   (let ((compilation-buffer-name-function (lambda (mode)
                                             tdd-mode-test-buffer))
         (default-directory (tdd-mode-get-project-root))
-        ;; Ensure output scrolls automatically
-        (compilation-scroll-output t)
+        (compilation-scroll-output tdd-mode-scroll-output)
         ;; Set environment variables for color support
         (compilation-environment '("TERM=xterm-256color" "PYTHONUNBUFFERED=1")))
     (let ((compilation-buffer
