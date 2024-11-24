@@ -263,7 +263,9 @@ MSG is the message string."
     (cons msg exit-status)))
 
 (define-derived-mode tdd-mode-compilation-mode compilation-mode "TDD-Compilation"
-  "Compilation mode for TDD Mode.")
+  "Compilation mode for TDD Mode."
+  (setq-local compilation-error-regexp-alist
+              '(("\\([^ \t\n]+\\):\\([0-9]+\\)" 1 2))))
 
 (defun tdd-mode-run-test (command)
   "Run the test COMMAND using compilation-mode and ensure the output scrolls."
@@ -340,10 +342,12 @@ MSG is the message string."
       (message "No relevant test files found."))))
 
 (defun tdd-mode-run-file-tests ()
-  "Run tests on the current file/module."
+  "Run all tests in the current file."
   (interactive)
-  (let ((test-command (tdd-mode-get-test-command)))
-    (tdd-mode-log "Running tests on the current file/module: `%s`" test-command)
+  (let* ((file-name (buffer-file-name))
+         (runner (tdd-mode-get-runner))
+         (test-command (format "%s %s" runner file-name)))
+    (tdd-mode-log "Running all tests in the file: `%s`" test-command)
     (tdd-mode-run-test test-command)))
 
 (defun tdd-mode-get-project-root ()
