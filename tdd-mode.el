@@ -124,26 +124,33 @@ If set to nil, keeps the buffer in the background."
 
 (defun tdd-mode-set-mode-line-color (color)
   "Set the mode-line background color to COLOR."
+  (tdd-mode-log "Setting mode-line color to %s" color)
   (set-face-background 'mode-line color))
 
 (defun tdd-mode-blink-mode-line (color)
   "Blink the mode-line by fading from COLOR to the original background."
+  (tdd-mode-log "Blinking mode-line with color %s" color)
   (when (timerp tdd-mode-fade-timer)
-    (cancel-timer tdd-mode-fade-timer))
+    (cancel-timer tdd-mode-fade-timer)
+    (tdd-mode-log "Cancelled existing fade timer"))
   (let* ((start-color (color-name-to-rgb color))
          (end-color (color-name-to-rgb tdd-mode-original-mode-line-bg))
          (step-colors (tdd-mode-generate-fade-colors start-color end-color tdd-mode-blink-steps)))
+    (tdd-mode-log "Start color: %s, End color: %s, Step colors: %s" start-color end-color step-colors)
     (setq tdd-mode-fade-timer
           (run-with-timer 0 tdd-mode-blink-interval
                           (lambda ()
                             (if (null step-colors)
                                 (progn
                                   (cancel-timer tdd-mode-fade-timer)
-                                  (setq tdd-mode-fade-timer nil))
+                                  (setq tdd-mode-fade-timer nil)
+                                  (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg)
+                                  (tdd-mode-log "Fade complete, resetting mode-line color to original"))
                               (tdd-mode-set-mode-line-color (pop step-colors))))))))
 
 (defun tdd-mode-generate-fade-colors (start-color end-color steps)
   "Generate a list of colors fading from START-COLOR to END-COLOR in STEPS."
+  (tdd-mode-log "Generating fade colors from %s to %s in %d steps" start-color end-color steps)
   (cl-loop for i from 0 below steps
            collect (apply 'color-rgb-to-hex
                           (cl-mapcar (lambda (start end)
@@ -152,6 +159,7 @@ If set to nil, keeps the buffer in the background."
 
 (defun tdd-mode-update-mode-line (exit-code)
   "Update the mode-line color based on the last test EXIT-CODE."
+  (tdd-mode-log "Updating mode-line with exit code %s" exit-code)
   (setq tdd-mode-last-test-exit-code exit-code)
   (let ((color (if (eq exit-code 0)
                    tdd-mode-blink-pass-color
@@ -164,6 +172,7 @@ If set to nil, keeps the buffer in the background."
          (outer (tdd-mode--outer-testable))
          (outer-def (car outer))
          (outer-obj (cdr outer)))
+    (tdd-mode-log "Inner testable: %s, Outer testable: %s" inner-obj outer)
     (if (and inner-obj outer-def outer-obj)
         (cond
          ((equal outer-def "def") outer-obj)
@@ -194,12 +203,14 @@ If set to nil, keeps the buffer in the background."
   (let* ((file-name (buffer-file-name))
          (runner (tdd-mode-get-runner))
          (test-entity (tdd-mode--get-testable)))
+    (tdd-mode-log "File name: %s, Runner: %s, Test entity: %s" file-name runner test-entity)
     (if test-entity
         (format "%s %s::%s" runner file-name test-entity)
       (format "%s %s" runner file-name))))
 
 (defun tdd-mode-get-runner ()
   "Return the configured test runner command."
+  (tdd-mode-log "Getting test runner")
   (pcase tdd-mode-test-runner
     ('pytest (concat (tdd-mode-get-python-executable) " -m pytest --color=yes"))
     ('nosetests (concat (tdd-mode-get-python-executable) " -m nose"))
@@ -208,6 +219,7 @@ If set to nil, keeps the buffer in the background."
 
 (defun tdd-mode-get-python-executable ()
   "Get Python executable path from the current environment or virtualenv."
+  (tdd-mode-log "Getting Python executable")
   (or (executable-find "python")
       (executable-find "python3")
       "python3"))
@@ -216,6 +228,7 @@ If set to nil, keeps the buffer in the background."
   "Copy the test command at point to the clipboard without running it."
   (interactive)
   (let ((test-command (tdd-mode-get-test-command)))
+    (tdd-mode-log "Copying test command to clipboard: %s" test-command)
     (setq tdd-mode-last-test-command test-command)
     (kill-new test-command)
     (message "Copied test command to clipboard: %s" test-command)))
@@ -223,17 +236,20 @@ If set to nil, keeps the buffer in the background."
 (defun tdd-mode-insert-pudb-breakpoint ()
   "Insert a pudb breakpoint at the current line and disable tdd-mode."
   (interactive)
+  (tdd-mode-log "Inserting pudb breakpoint")
   (insert "import pudb; pudb.set_trace() # fmt: off")
   (tdd-mode -1))
 
 (defun tdd-mode-insert-ipdb-breakpoint ()
   "Insert an ipdb breakpoint at the current line and disable tdd-mode."
   (interactive)
+  (tdd-mode-log "Inserting ipdb breakpoint")
   (insert "import ipdb; ipdb.set_trace() # fmt: off")
   (tdd-mode -1))
 
 (defun tdd-mode-display-test-output-buffer ()
   "Display the test output buffer and ensure it's scrolled to the end."
+  (tdd-mode-log "Displaying test output buffer")
   (let ((buffer (get-buffer-create tdd-mode-test-buffer)))
     ;; Display the buffer without switching focus
     (display-buffer buffer '((display-buffer-reuse-window
@@ -248,6 +264,7 @@ If set to nil, keeps the buffer in the background."
 
 (defun tdd-mode--compilation-filter ()
   "Process the output of the compilation buffer."
+  (tdd-mode-log "Processing compilation filter")
   (when (eq major-mode 'tdd-mode-compilation-mode)
     (let ((inhibit-read-only t))
       (ansi-color-apply-on-region compilation-filter-start (point-max))
@@ -263,6 +280,7 @@ If set to nil, keeps the buffer in the background."
 PROCESS-STATUS is a symbol describing how the process finished.
 EXIT-STATUS is the exit code or signal number.
 MSG is the message string."
+  (tdd-mode-log "Handling compilation exit message: %s, %s, %s" process-status exit-status msg)
   (let ((exit-code (if (numberp exit-status) exit-status 1)))
     (tdd-mode-update-mode-line exit-code)
     (tdd-mode-notify exit-code)
@@ -277,9 +295,9 @@ MSG is the message string."
 (defun tdd-mode-run-test (command)
   "Run the test COMMAND using compilation-mode and ensure the output scrolls."
   (interactive)
+  (tdd-mode-log "Running test command: %s" command)
   (setq tdd-mode-last-test-command command)
   (setq tdd-mode-last-test-exit-code nil)
-  (tdd-mode-log "Running test: %s" command)
   (let ((compilation-buffer-name-function (lambda (mode)
                                             tdd-mode-test-buffer))
         (default-directory (tdd-mode-get-project-root))
@@ -297,6 +315,7 @@ MSG is the message string."
 
 (defun tdd-mode-notify (exit-code)
   "Notify user based on EXIT-CODE and user preferences."
+  (tdd-mode-log "Notifying user with exit code: %s" exit-code)
   (let ((msg (if (eq exit-code 0) "✅ Tests Passed!" "❌ Tests Failed!")))
     (cond
      ((and tdd-mode-notify-on-pass (eq exit-code 0))
@@ -311,12 +330,14 @@ MSG is the message string."
 (defun tdd-mode-run-test-at-point ()
   "Run the test at point (function, class, or file level)."
   (interactive)
+  (tdd-mode-log "Running test at point")
   (let ((test-command (tdd-mode-get-test-command)))
     (tdd-mode-run-test test-command)))
 
 (defun tdd-mode-run-last-test ()
   "Run the last executed test command."
   (interactive)
+  (tdd-mode-log "Running last test command")
   (if tdd-mode-last-test-command
       (progn
         (tdd-mode-log "Running last test command '%s'" tdd-mode-last-test-command)
@@ -326,6 +347,7 @@ MSG is the message string."
 (defun tdd-mode-run-all-tests ()
   "Run all tests in the project."
   (interactive)
+  (tdd-mode-log "Running all tests")
   (let ((command (format "%s %s" (tdd-mode-get-runner) (tdd-mode-get-project-root))))
     (tdd-mode-log "Running all tests with command '%s'" command)
     (tdd-mode-run-test command)))
@@ -333,6 +355,7 @@ MSG is the message string."
 (defun tdd-mode-run-relevant-tests ()
   "Run the tests relevant to the changes in the git diff, only running Python test files."
   (interactive)
+  (tdd-mode-log "Running relevant tests")
   (let* ((project-root (tdd-mode-get-project-root))
          (default-directory project-root)
          (changed-files (shell-command-to-string
@@ -350,6 +373,7 @@ MSG is the message string."
 (defun tdd-mode-run-file-tests ()
   "Run all tests in the current file."
   (interactive)
+  (tdd-mode-log "Running all tests in the current file")
   (let* ((file-name (buffer-file-name))
          (runner (tdd-mode-get-runner))
          (test-command (format "%s %s" runner file-name)))
@@ -358,18 +382,21 @@ MSG is the message string."
 
 (defun tdd-mode-get-project-root ()
   "Detect project root based on common markers."
+  (tdd-mode-log "Getting project root")
   (or (locate-dominating-file default-directory "pyproject.toml")
       (locate-dominating-file default-directory ".git")
       default-directory))
 
 (defun tdd-mode-is-test-related-file ()
   "Return t if current buffer is a .py file or test-related config file."
+  (tdd-mode-log "Checking if current buffer is test-related")
   (let ((file-name (file-name-nondirectory (or (buffer-file-name) ""))))
     (or (string-match-p "\\.py\\'" file-name)
         (member file-name '("pyproject.toml" "pytest.ini" "tox.ini" "setup.cfg")))))
 
 (defun tdd-mode-after-save-handler ()
   "Automatically rerun last test if configured and if buffer matches criteria."
+  (tdd-mode-log "Running after-save handler")
   (when (and tdd-mode-auto-run-on-save
              (tdd-mode-is-test-related-file))
     (tdd-mode-run-last-test)))
@@ -377,6 +404,7 @@ MSG is the message string."
 (defun tdd-mode-copy-output-to-clipboard ()
   "Copy the test output to the clipboard."
   (interactive)
+  (tdd-mode-log "Copying test output to clipboard")
   (if (get-buffer tdd-mode-test-buffer)
       (with-current-buffer tdd-mode-test-buffer
         (kill-ring-save (point-min) (point-max))
@@ -386,6 +414,7 @@ MSG is the message string."
 (defun tdd-mode-copy-diff-and-output ()
   "Copy the git diff of the project and the test output to the clipboard."
   (interactive)
+  (tdd-mode-log "Copying diff and test output to clipboard")
   (let* ((project-root (tdd-mode-get-project-root))
          (default-directory project-root)
          (diff (shell-command-to-string "git diff"))
@@ -398,6 +427,7 @@ MSG is the message string."
 
 (defun tdd-mode-apply-color-to-buffer (&rest _)
   "Reapply the mode-line color based on the last test result when switching buffers."
+  (tdd-mode-log "Applying color to buffer")
   (when (and tdd-mode tdd-mode-blink-enabled)
     (let ((color (cond
                   ((null tdd-mode-last-test-exit-code)
@@ -407,6 +437,17 @@ MSG is the message string."
                   (t
                    tdd-mode-blink-fail-color))))
       (tdd-mode-set-mode-line-color color))))
+
+(defun tdd-mode-reset-mode-line-color ()
+  "Reset the mode-line color to the original background color."
+  (tdd-mode-log "Resetting mode-line color to original")
+  (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg))
+
+(defun tdd-mode-buffer-change-hook ()
+  "Hook function to handle buffer changes and ensure mode-line color is consistent."
+  (tdd-mode-log "Handling buffer change hook")
+  (when (and tdd-mode tdd-mode-blink-enabled)
+    (tdd-mode-apply-color-to-buffer)))
 
 ;;;###autoload
 (define-minor-mode tdd-mode
@@ -420,16 +461,14 @@ MSG is the message string."
       (progn
         (setq tdd-mode-original-mode-line-bg (face-background 'mode-line))
         (add-hook 'after-save-hook 'tdd-mode-after-save-handler)
-        (add-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer)
         (message "[tdd-mode] TDD Mode activated"))
     ;; Deactivation code
     (remove-hook 'after-save-hook 'tdd-mode-after-save-handler)
-    (remove-hook 'window-selection-change-functions #'tdd-mode-apply-color-to-buffer)
     (when (timerp tdd-mode-fade-timer)
       (cancel-timer tdd-mode-fade-timer)
       (setq tdd-mode-fade-timer nil))
     ;; Reset the mode-line color
-    (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg)
+    (tdd-mode-reset-mode-line-color)
     ;; Reset last test exit code
     (setq tdd-mode-last-test-exit-code nil)
     (message "[tdd-mode] TDD Mode deactivated")))
