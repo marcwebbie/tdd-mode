@@ -40,7 +40,7 @@ If set to nil, keeps the buffer in the background."
   :type 'boolean
   :group 'tdd-mode)
 
-(defcustom tdd-mode-verbose t
+(defcustom tdd-mode-verbose nil
   "Toggle verbose debug output for TDD Mode."
   :type 'boolean
   :group 'tdd-mode)
@@ -60,12 +60,12 @@ If set to nil, keeps the buffer in the background."
   :type 'string
   :group 'tdd-mode)
 
-(defcustom tdd-mode-blink-steps 10
+(defcustom tdd-mode-blink-steps 20
   "Number of steps for the mode-line fade effect."
   :type 'integer
   :group 'tdd-mode)
 
-(defcustom tdd-mode-blink-interval 0.1
+(defcustom tdd-mode-blink-interval 0.2
   "Interval in seconds between each fade step."
   :type 'number
   :group 'tdd-mode)
@@ -124,28 +124,37 @@ If set to nil, keeps the buffer in the background."
 
 (defun tdd-mode-set-mode-line-color (color)
   "Set the mode-line background color to COLOR."
-  (tdd-mode-log "Setting mode-line color to %s" color)
+  (tdd-mode-log "Setting mode-line color to: %s" color)
   (set-face-background 'mode-line color))
+
+(defvar tdd-mode-blinking-in-progress nil
+  "Flag to indicate if the mode-line blinking is in progress.")
 
 (defun tdd-mode-blink-mode-line (color)
   "Blink the mode-line by fading from COLOR to the original background."
-  (tdd-mode-log "Blinking mode-line with color %s" color)
+  (tdd-mode-log "Blinking mode-line with color: %s" color)
   (when (timerp tdd-mode-fade-timer)
-    (cancel-timer tdd-mode-fade-timer)
-    (tdd-mode-log "Cancelled existing fade timer"))
+    (tdd-mode-log "Canceling existing fade timer")
+    (cancel-timer tdd-mode-fade-timer))
   (let* ((start-color (color-name-to-rgb color))
          (end-color (color-name-to-rgb tdd-mode-original-mode-line-bg))
          (step-colors (tdd-mode-generate-fade-colors start-color end-color tdd-mode-blink-steps)))
-    (tdd-mode-log "Start color: %s, End color: %s, Step colors: %s" start-color end-color step-colors)
+    (tdd-mode-log "Generated %d fade steps" (length step-colors))
+    (setq tdd-mode-blinking-in-progress t)
     (setq tdd-mode-fade-timer
           (run-with-timer 0 tdd-mode-blink-interval
                           (lambda ()
                             (if (null step-colors)
                                 (progn
+                                  (tdd-mode-log "Fade completed")
                                   (cancel-timer tdd-mode-fade-timer)
                                   (setq tdd-mode-fade-timer nil)
+                                  (setq tdd-mode-blinking-in-progress nil)
                                   (tdd-mode-set-mode-line-color tdd-mode-original-mode-line-bg)
-                                  (tdd-mode-log "Fade complete, resetting mode-line color to original"))
+                                  ;; Start a new blink cycle after a short delay
+                                  (when (equal color tdd-mode-blink-fail-color)
+                                    (run-with-timer 1 nil (lambda () (tdd-mode-blink-mode-line color)))))
+                              (tdd-mode-log "Setting mode-line color to: %s" (car step-colors))
                               (tdd-mode-set-mode-line-color (pop step-colors))))))))
 
 (defun tdd-mode-generate-fade-colors (start-color end-color steps)
@@ -159,7 +168,7 @@ If set to nil, keeps the buffer in the background."
 
 (defun tdd-mode-update-mode-line (exit-code)
   "Update the mode-line color based on the last test EXIT-CODE."
-  (tdd-mode-log "Updating mode-line with exit code %s" exit-code)
+  (tdd-mode-log "Updating mode-line with exit code: %s" exit-code)
   (setq tdd-mode-last-test-exit-code exit-code)
   (let ((color (if (eq exit-code 0)
                    tdd-mode-blink-pass-color
@@ -172,7 +181,7 @@ If set to nil, keeps the buffer in the background."
          (outer (tdd-mode--outer-testable))
          (outer-def (car outer))
          (outer-obj (cdr outer)))
-    (tdd-mode-log "Inner testable: %s, Outer testable: %s" inner-obj outer)
+    (tdd-mode-log "Inner testable: %s, Outer testable: %s" inner-obj outer-obj)
     (if (and inner-obj outer-def outer-obj)
         (cond
          ((equal outer-def "def") outer-obj)
@@ -203,14 +212,13 @@ If set to nil, keeps the buffer in the background."
   (let* ((file-name (buffer-file-name))
          (runner (tdd-mode-get-runner))
          (test-entity (tdd-mode--get-testable)))
-    (tdd-mode-log "File name: %s, Runner: %s, Test entity: %s" file-name runner test-entity)
+    (tdd-mode-log "Test entity: %s" test-entity)
     (if test-entity
         (format "%s %s::%s" runner file-name test-entity)
       (format "%s %s" runner file-name))))
 
 (defun tdd-mode-get-runner ()
   "Return the configured test runner command."
-  (tdd-mode-log "Getting test runner")
   (pcase tdd-mode-test-runner
     ('pytest (concat (tdd-mode-get-python-executable) " -m pytest --color=yes"))
     ('nosetests (concat (tdd-mode-get-python-executable) " -m nose"))
@@ -219,7 +227,6 @@ If set to nil, keeps the buffer in the background."
 
 (defun tdd-mode-get-python-executable ()
   "Get Python executable path from the current environment or virtualenv."
-  (tdd-mode-log "Getting Python executable")
   (or (executable-find "python")
       (executable-find "python3")
       "python3"))
@@ -249,8 +256,8 @@ If set to nil, keeps the buffer in the background."
 
 (defun tdd-mode-display-test-output-buffer ()
   "Display the test output buffer and ensure it's scrolled to the end."
-  (tdd-mode-log "Displaying test output buffer")
   (let ((buffer (get-buffer-create tdd-mode-test-buffer)))
+    (tdd-mode-log "Displaying test output buffer")
     ;; Display the buffer without switching focus
     (display-buffer buffer '((display-buffer-reuse-window
                               display-buffer-in-side-window)
@@ -264,9 +271,9 @@ If set to nil, keeps the buffer in the background."
 
 (defun tdd-mode--compilation-filter ()
   "Process the output of the compilation buffer."
-  (tdd-mode-log "Processing compilation filter")
   (when (eq major-mode 'tdd-mode-compilation-mode)
     (let ((inhibit-read-only t))
+      (tdd-mode-log "Processing compilation output")
       (ansi-color-apply-on-region compilation-filter-start (point-max))
       (when tdd-mode-scroll-output
         ;; Scroll to the end of the buffer
@@ -280,8 +287,8 @@ If set to nil, keeps the buffer in the background."
 PROCESS-STATUS is a symbol describing how the process finished.
 EXIT-STATUS is the exit code or signal number.
 MSG is the message string."
-  (tdd-mode-log "Handling compilation exit message: %s, %s, %s" process-status exit-status msg)
   (let ((exit-code (if (numberp exit-status) exit-status 1)))
+    (tdd-mode-log "Compilation process exited with status: %s, exit code: %s, message: %s" process-status exit-code msg)
     (tdd-mode-update-mode-line exit-code)
     (tdd-mode-notify exit-code)
     ;; Return the default message
@@ -315,8 +322,8 @@ MSG is the message string."
 
 (defun tdd-mode-notify (exit-code)
   "Notify user based on EXIT-CODE and user preferences."
-  (tdd-mode-log "Notifying user with exit code: %s" exit-code)
   (let ((msg (if (eq exit-code 0) "✅ Tests Passed!" "❌ Tests Failed!")))
+    (tdd-mode-log "Notifying user with message: %s" msg)
     (cond
      ((and tdd-mode-notify-on-pass (eq exit-code 0))
       (if tdd-mode-alert-enabled
@@ -330,14 +337,13 @@ MSG is the message string."
 (defun tdd-mode-run-test-at-point ()
   "Run the test at point (function, class, or file level)."
   (interactive)
-  (tdd-mode-log "Running test at point")
   (let ((test-command (tdd-mode-get-test-command)))
+    (tdd-mode-log "Running test at point with command: %s" test-command)
     (tdd-mode-run-test test-command)))
 
 (defun tdd-mode-run-last-test ()
   "Run the last executed test command."
   (interactive)
-  (tdd-mode-log "Running last test command")
   (if tdd-mode-last-test-command
       (progn
         (tdd-mode-log "Running last test command '%s'" tdd-mode-last-test-command)
@@ -347,7 +353,6 @@ MSG is the message string."
 (defun tdd-mode-run-all-tests ()
   "Run all tests in the project."
   (interactive)
-  (tdd-mode-log "Running all tests")
   (let ((command (format "%s %s" (tdd-mode-get-runner) (tdd-mode-get-project-root))))
     (tdd-mode-log "Running all tests with command '%s'" command)
     (tdd-mode-run-test command)))
@@ -355,12 +360,12 @@ MSG is the message string."
 (defun tdd-mode-run-relevant-tests ()
   "Run the tests relevant to the changes in the git diff, only running Python test files."
   (interactive)
-  (tdd-mode-log "Running relevant tests")
   (let* ((project-root (tdd-mode-get-project-root))
          (default-directory project-root)
          (changed-files (shell-command-to-string
                          "git diff --name-only --diff-filter=AM HEAD^ | grep 'tests/.*\\.py$'"))
          (test-files (split-string changed-files "\n" t)))
+    (tdd-mode-log "Found relevant test files: %s" test-files)
     (if test-files
         (let ((command (format "%s %s %s"
                                (tdd-mode-get-runner)
@@ -373,7 +378,6 @@ MSG is the message string."
 (defun tdd-mode-run-file-tests ()
   "Run all tests in the current file."
   (interactive)
-  (tdd-mode-log "Running all tests in the current file")
   (let* ((file-name (buffer-file-name))
          (runner (tdd-mode-get-runner))
          (test-command (format "%s %s" runner file-name)))
@@ -382,39 +386,36 @@ MSG is the message string."
 
 (defun tdd-mode-get-project-root ()
   "Detect project root based on common markers."
-  (tdd-mode-log "Getting project root")
   (or (locate-dominating-file default-directory "pyproject.toml")
       (locate-dominating-file default-directory ".git")
       default-directory))
 
 (defun tdd-mode-is-test-related-file ()
   "Return t if current buffer is a .py file or test-related config file."
-  (tdd-mode-log "Checking if current buffer is test-related")
   (let ((file-name (file-name-nondirectory (or (buffer-file-name) ""))))
     (or (string-match-p "\\.py\\'" file-name)
         (member file-name '("pyproject.toml" "pytest.ini" "tox.ini" "setup.cfg")))))
 
 (defun tdd-mode-after-save-handler ()
   "Automatically rerun last test if configured and if buffer matches criteria."
-  (tdd-mode-log "Running after-save handler")
   (when (and tdd-mode-auto-run-on-save
              (tdd-mode-is-test-related-file))
+    (tdd-mode-log "Buffer saved, rerunning last test")
     (tdd-mode-run-last-test)))
 
 (defun tdd-mode-copy-output-to-clipboard ()
   "Copy the test output to the clipboard."
   (interactive)
-  (tdd-mode-log "Copying test output to clipboard")
   (if (get-buffer tdd-mode-test-buffer)
       (with-current-buffer tdd-mode-test-buffer
         (kill-ring-save (point-min) (point-max))
+        (tdd-mode-log "Copied test output to clipboard")
         (message "Test output copied to clipboard."))
     (message "No test output buffer found.")))
 
 (defun tdd-mode-copy-diff-and-output ()
   "Copy the git diff of the project and the test output to the clipboard."
   (interactive)
-  (tdd-mode-log "Copying diff and test output to clipboard")
   (let* ((project-root (tdd-mode-get-project-root))
          (default-directory project-root)
          (diff (shell-command-to-string "git diff"))
@@ -422,13 +423,13 @@ MSG is the message string."
                           (with-current-buffer tdd-mode-test-buffer
                             (buffer-substring-no-properties (point-min) (point-max)))
                         "No test output found.")))
+    (tdd-mode-log "Copied diff and test output to clipboard")
     (kill-new (format "Diff:\n\n%s\n\nTest output:\n\n%s" diff test-output))
     (message "Copied diff and test output to clipboard.")))
 
 (defun tdd-mode-apply-color-to-buffer (&rest _)
   "Reapply the mode-line color based on the last test result when switching buffers."
-  (tdd-mode-log "Applying color to buffer")
-  (when (and tdd-mode tdd-mode-blink-enabled)
+  (when (and tdd-mode tdd-mode-blink-enabled (not tdd-mode-blinking-in-progress))
     (let ((color (cond
                   ((null tdd-mode-last-test-exit-code)
                    tdd-mode-original-mode-line-bg)
@@ -436,6 +437,7 @@ MSG is the message string."
                    tdd-mode-blink-pass-color)
                   (t
                    tdd-mode-blink-fail-color))))
+      (tdd-mode-log "Reapplying mode-line color: %s" color)
       (tdd-mode-set-mode-line-color color))))
 
 (defun tdd-mode-reset-mode-line-color ()
@@ -445,8 +447,8 @@ MSG is the message string."
 
 (defun tdd-mode-buffer-change-hook ()
   "Hook function to handle buffer changes and ensure mode-line color is consistent."
-  (tdd-mode-log "Handling buffer change hook")
   (when (and tdd-mode tdd-mode-blink-enabled)
+    (tdd-mode-log "Buffer change detected, applying color")
     (tdd-mode-apply-color-to-buffer)))
 
 ;;;###autoload
@@ -459,10 +461,12 @@ MSG is the message string."
   :global t
   (if tdd-mode
       (progn
+        (tdd-mode-log "TDD Mode activated")
         (setq tdd-mode-original-mode-line-bg (face-background 'mode-line))
         (add-hook 'after-save-hook 'tdd-mode-after-save-handler)
         (message "[tdd-mode] TDD Mode activated"))
     ;; Deactivation code
+    (tdd-mode-log "TDD Mode deactivated")
     (remove-hook 'after-save-hook 'tdd-mode-after-save-handler)
     (when (timerp tdd-mode-fade-timer)
       (cancel-timer tdd-mode-fade-timer)
