@@ -1,5 +1,60 @@
 ;;; tdd-mode.el --- Modern TDD Mode for Python -*- lexical-binding: t; -*-
 
+;; Author: Marcwebbie <marcwebbie@gmail.com>
+;; Maintainer: Marcwebbie <marcwebbie@gmail.com>
+;; Created: 2024-11-12
+;; Version: 1.0.0
+;; Package-Requires: ((emacs "27.1"))
+;; Homepage: https://github.com/marcwebbie/tdd-mode
+;; Keywords: tools, convenience, testing, python, tdd
+
+;; This file is part of GNU Emacs.
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; tdd-mode provides a modern, intuitive, and responsive minor mode for
+;; test-driven development in Python projects using Emacs.
+;;
+;; It supports various test runners (e.g. pytest, nosetests, Django),
+;; provides interactive commands to run tests at point, rerun last tests,
+;; display output in a dedicated buffer, and highlight the Emacs mode-line
+;; based on test results using dynamic fading effects.
+;;
+;; Features:
+;; - Run tests for current function, class, file, or project
+;; - Configurable test runners: pytest, Django, nosetests
+;; - Automatic test reruns on file save
+;; - Alerts for pass/fail (with optional integration with `alert`)
+;; - Mode-line blinking with color fade feedback
+;; - Interactive command map for test operations
+;; - Copy test command or output to clipboard
+;; - Intelligent test discovery using Python syntax
+;; - Rich customization options via Emacs Customize
+;;
+;; Usage:
+;; Enable `tdd-mode` in a Python buffer or globally with:
+;;
+;;   (add-hook 'python-mode-hook #'tdd-mode)
+;;
+;; Bind `tdd-mode-command-map` to a convenient keybinding:
+;;   (global-set-key (kbd "C-c t") tdd-mode-command-map)
+;;
+;; See the GitHub repository for documentation, issues, and contributions.
+
+;;; Code:
 (require 'ansi-color)
 (require 'cl-lib)
 (require 'subr-x)
