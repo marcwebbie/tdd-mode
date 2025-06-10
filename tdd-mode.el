@@ -48,7 +48,7 @@
 ;;   (add-hook 'python-mode-hook #'tdd-mode)
 ;;
 ;; Bind `tdd-mode-command-map' to a convenient keybinding:
-;;   (global-set-key (kbd "C-c t") tdd-mode-command-map)
+;;   (global-set-key (kbd "C-c C-t") tdd-mode-command-map)
 ;;
 ;; See the GitHub repository for documentation, issues, and contributions.
 
@@ -60,8 +60,8 @@
 (require 'python)
 (require 'compile)
 
-(defgroup tdd-mode nil
-  "Test-Driven Development mode for Python projects in Emacs."
+(defgroup tdd nil
+  "Test-Driven Development for Python projects in Emacs."
   :group 'tools
   :prefix "tdd-mode-")
 
@@ -70,63 +70,63 @@
   :type '(choice (const :tag "Pytest" pytest)
                  (const :tag "Nosetests" nosetests)
                  (const :tag "Django" django))
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-notify-on-pass t
   "Notify when a test passes."
   :type 'boolean
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-notify-on-fail t
   "Notify when a test fails."
   :type 'boolean
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-auto-run-on-save t
   "Automatically rerun the last test command on save."
   :type 'boolean
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-buffer-popup t
   "If non-nil, displays the `*tdd-output*' buffer after each test run.
 If set to nil, keeps the buffer in the background."
   :type 'boolean
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-verbose nil
   "Toggle verbose debug output for TDD Mode."
   :type 'boolean
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-blink-enabled t
   "If non-nil, enables mode-line blinking on test failures and success."
   :type 'boolean
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-blink-fail-color "#F44336"
   "Color for the mode-line when a test fails."
   :type 'string
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-blink-pass-color "#4CAF50"
   "Color for the mode-line when a test passes."
   :type 'string
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-blink-steps 20
   "Number of steps for the mode-line fade effect."
   :type 'integer
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-blink-interval 0.2
   "Interval in seconds between each fade step."
   :type 'number
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defcustom tdd-mode-scroll-output t
   "If non-nil, the compilation buffer will automatically scroll to follow output."
   :type 'boolean
-  :group 'tdd-mode)
+  :group 'tdd)
 
 (defvar tdd-mode-test-buffer "*tdd-output*"
   "Buffer for displaying test output.")
@@ -160,8 +160,7 @@ If set to nil, keeps the buffer in the background."
 
 (defvar tdd-mode-prefix-map (make-sparse-keymap)
   "Prefix map for TDD Mode commands.")
-(define-key tdd-mode-prefix-map (kbd "t") tdd-mode-command-map)
-(define-key tdd-mode-prefix-map (kbd "C-c t") tdd-mode-command-map)
+(define-key tdd-mode-prefix-map (kbd "C-c C-t") tdd-mode-command-map)
 
 ;; Declare variables and functions to suppress compiler warnings
 (defvar tdd-mode nil
@@ -516,7 +515,7 @@ Only Python test files are included."
   "Test-Driven Development mode for Python in Emacs."
   :lighter " TDD"
   :keymap (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "C-c t") tdd-mode-command-map)
+            (define-key map (kbd "C-c C-t") tdd-mode-command-map)
             map)
   :global t
   (if tdd-mode
