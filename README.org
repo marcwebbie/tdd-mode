@@ -4,21 +4,21 @@
 
 #+BEGIN_HTML
 <div class="shields">
- <a href="https://github.com/marcwebbie/tdd-mode">
-  <img src="https://img.shields.io/github/stars/marcwebbie/tdd-mode?style=social" alt="GitHub stars">
- </a>
- <a href="https://github.com/marcwebbie/tdd-mode">
-  <img alt="GitHub forks" src="https://img.shields.io/github/forks/marcwebbie/tdd-mode">
- </a>
- <a href="https://github.com/marcwebbie/tdd-mode/issues">
-  <img src="https://img.shields.io/github/issues/marcwebbie/tdd-mode?color=blue&label=Issues" alt="GitHub issues">
- </a>
- <a href="https://github.com/marcwebbie/tdd-mode/actions">
-  <img src="https://img.shields.io/github/contributors/marcwebbie/tdd-mode" alt="Contributors">
- </a>
- <a href="https://www.gnu.org/licenses/gpl-3.0.en.html">
-  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="GPLv3 License">
- </a>
+<a href="https://github.com/marcwebbie/tdd-mode">
+<img src="https://img.shields.io/github/stars/marcwebbie/tdd-mode?style=social" alt="GitHub stars">
+</a>
+<a href="https://github.com/marcwebbie/tdd-mode">
+<img alt="GitHub forks" src="https://img.shields.io/github/forks/marcwebbie/tdd-mode">
+</a>
+<a href="https://github.com/marcwebbie/tdd-mode/issues">
+<img src="https://img.shields.io/github/issues/marcwebbie/tdd-mode?color=blue&label=Issues" alt="GitHub issues">
+</a>
+<a href="https://github.com/marcwebbie/tdd-mode/actions">
+<img src="https://img.shields.io/github/contributors/marcwebbie/tdd-mode" alt="Contributors">
+</a>
+<a href="https://www.gnu.org/licenses/gpl-3.0.en.html">
+<img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="GPLv3 License">
+</a>
 </div>
 #+END_HTML
 
