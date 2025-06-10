@@ -1,6 +1,7 @@
 #+TITLE: TDD Mode for Python in Emacs
 #+OPTIONS: toc:nil
-#+HTML_HEAD: <style>h2 { text-align: center; } .shields { text-align: center; margin-bottom: 20px; } .center { text-align: center; } </style>
+#+HTML_HEA
+D: <style>h2 { text-align: center; } .shields { text-align: center; margin-bottom: 20px; } .center { text-align: center; } </style>
 
 #+BEGIN_HTML
 <div class="shields">
@@ -52,7 +53,7 @@ Using =straight.el= or =use-package=, add the following configuration to your Em
         tdd-mode-notify-on-fail t
         tdd-mode-auto-run-on-save t
         tdd-mode-scroll-output t
-        tdd-mode-buffer-popup t)) ; Added tdd-mode-buffer-popup for clarity
+        tdd-mode-buffer-popup t))
 #+END_SRC
 
 ** Step 2: Activate TDD Mode
@@ -90,7 +91,7 @@ You can install =tdd-mode= directly by cloning the repository or using a package
         tdd-mode-notify-on-fail t
         tdd-mode-auto-run-on-save t
         tdd-mode-scroll-output t
-        tdd-mode-buffer-popup t)) ; Added tdd-mode-buffer-popup for clarity
+        tdd-mode-buffer-popup t))
 #+END_SRC
 
 ** Using use-package without straight.el
@@ -105,11 +106,11 @@ You can install =tdd-mode= directly by cloning the repository or using a package
         tdd-mode-notify-on-fail t
         tdd-mode-auto-run-on-save t
         tdd-mode-scroll-output t
-        tdd-mode-buffer-popup t)) ; Added tdd-mode-buffer-popup for clarity
+        tdd-mode-buffer-popup t))
 #+END_SRC
 
 * Configuration
-=tdd-mode= comes with several customizable options:
+=tdd-mode= comes with several customizable options to tailor the TDD workflow:
 
 | Option                      | Description                                                          | Default Value |
 |-----------------------------+----------------------------------------------------------------------+---------------|
@@ -126,7 +127,22 @@ You can install =tdd-mode= directly by cloning the repository or using a package
 | =tdd-mode-blink-steps=      | Number of steps for the mode-line fade effect.                       | =20=          |
 | =tdd-mode-blink-interval=   | Interval in seconds between each fade step.                          | =0.2=         |
 
+To customize these options, add them to the `:config` section of your `use-package` declaration or use `M-x customize-group RET tdd-mode RET`. For example, to disable mode-line blinking:
+
+#+BEGIN_SRC emacs-lisp
+(setq tdd-mode-blink-enabled nil)
+#+END_SRC
+
 * Keybindings
+The default keybinding prefix for =tdd-mode= commands is =C-c t=, which activates the =tdd-mode-command-map=. You can customize this prefix by modifying the `:bind-keymap` in your `use-package` configuration or by setting a different keybinding for `tdd-mode-command-map`. For example, to use =C-c C-t= instead:
+
+#+BEGIN_SRC emacs-lisp
+(use-package tdd-mode
+  :straight (tdd-mode :type git :host github :repo "marcwebbie/tdd-mode")
+  :hook (python-mode . tdd-mode)
+  :bind-keymap ("C-c C-t" . tdd-mode-command-map))
+#+END_SRC
+
 Here are the default keybindings for =tdd-mode=:
 
 | Keybinding | Command                             | Description                                     |
