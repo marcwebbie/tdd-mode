@@ -7,7 +7,6 @@
   <a href="https://github.com/marcwebbie/tdd-mode"><img src="https://img.shields.io/github/stars/marcwebbie/tdd-mode?style=social" alt="GitHub Stars"></a>
   <a href="https://github.com/marcwebbie/tdd-mode"><img src="https://img.shields.io/github/forks/marcwebbie/tdd-mode?style=social" alt="GitHub Forks"></a>
   <a href="https://github.com/marcwebbie/tdd-mode/issues"><img src="https://img.shields.io/github/issues/marcwebbie/tdd-mode?color=blue" alt="GitHub Issues"></a>
-  <a href="https://github.com/marcwebbie/tdd-mode/actions"><img src="https://img.shields.io/github/workflow/status/marcwebbie/tdd-mode/CI?label=CI" alt="GitHub Actions"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="GPLv3 License"></a>
 </div>
 #+END_HTML
@@ -89,9 +88,9 @@ If you don't use =straight.el=, place the =tdd-mode= files in your Emacs load pa
 ** Manual Installation
 Clone the repository and add it to your load path:
 
-```bash
+#+BEGIN_SRC bash
 git clone https://github.com/marcwebbie/tdd-mode.git ~/path/to/tdd-mode
-```
+#+END_SRC
 
 Then, add to your Emacs configuration:
 
