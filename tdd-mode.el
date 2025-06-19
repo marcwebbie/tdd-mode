@@ -43,12 +43,14 @@
 ;; - Rich customization options via Emacs Customize
 ;;
 ;; Usage:
-;; Enable `tdd-mode' in a Python buffer or globally with:
+;; Enable tdd-mode in a Python buffer or globally with:
 ;;
 ;;    (add-hook 'python-mode-hook #'tdd-mode)
 ;;
 ;; Bind "tdd-mode-command-map" to a convenient keybinding:
 ;;    (global-set-key (kbd "C-c C-t") tdd-mode-command-map)
+;;
+;; Note: Removed all backticks to resolve melpazoid warnings.
 ;;
 ;; See the GitHub repository for documentation, issues, and contributions.
 
@@ -88,7 +90,7 @@
   :group 'tdd)
 
 (defcustom tdd-mode-buffer-popup t
-  "If non-nil, displays the `*tdd-output*' buffer after each test run.
+  "If non-nil, displays the *tdd-output* buffer after each test run.
 If set to nil, keeps the buffer in the background."
   :type 'boolean
   :group 'tdd)
@@ -132,7 +134,7 @@ If set to nil, keeps the buffer in the background."
   "Buffer for displaying test output.")
 
 (defvar tdd-mode-last-test-command nil
-  "Stores the last test command used in `tdd-mode'.")
+  "Stores the last test command used in tdd-mode.")
 
 (defvar tdd-mode-last-test-exit-code nil
   "Stores the last exit code to show status across buffers.")
@@ -156,13 +158,13 @@ If set to nil, keeps the buffer in the background."
     (define-key map (kbd "B") #'tdd-mode-insert-pudb-breakpoint)
     (define-key map (kbd "C") #'tdd-mode-copy-diff-and-output)
     map)
-  "Keymap for `tdd-mode' commands.")
+  "Keymap for tdd-mode commands.")
 
 ;; Declare variables and functions to suppress compiler warnings
 (defvar tdd-mode nil
   "Non-nil if TDD Mode is enabled.")
 (defvar tdd-mode-alert-enabled nil
-  "Non-nil if `alert' package is available.")
+  "Non-nil if alert package is available.")
 (declare-function alert "alert" (message &rest args))
 
 ;; Optional alert package
@@ -171,12 +173,12 @@ If set to nil, keeps the buffer in the background."
   (setq tdd-mode-alert-enabled nil))
 
 (defun tdd-mode-log (message &rest args)
-  "Log `MESSAGE' with `ARGS' if `tdd-mode-verbose' is enabled."
+  "Log MESSAGE with ARGS if tdd-mode-verbose is enabled."
   (when tdd-mode-verbose
     (message "[tdd-mode] %s" (apply #'format message args))))
 
 (defun tdd-mode-set-mode-line-color (color)
-  "Set the mode-line background color to `COLOR'."
+  "Set the mode-line background color to COLOR."
   (tdd-mode-log "Setting mode-line color to: %s" color)
   (set-face-background 'mode-line color))
 
@@ -184,7 +186,7 @@ If set to nil, keeps the buffer in the background."
   "Flag to indicate if the mode-line blinking is in progress.")
 
 (defun tdd-mode-blink-mode-line (color)
-  "Blink the mode-line by fading from `COLOR' to the original background."
+  "Blink the mode-line by fading from COLOR to the original background."
   (tdd-mode-log "Blinking mode-line with color: %s" color)
   (when (timerp tdd-mode-fade-timer)
     (tdd-mode-log "Canceling existing fade timer")
@@ -211,8 +213,7 @@ If set to nil, keeps the buffer in the background."
                               (tdd-mode-set-mode-line-color (pop step-colors))))))))
 
 (defun tdd-mode-generate-fade-colors (start-color end-color steps)
-  "Generate a list of colors fading from `START-COLOR' to `END-COLOR'.
-The fade occurs in `STEPS' steps."
+  "Generate a list of colors fading from START-COLOR to END-COLOR in STEPS steps."
   (tdd-mode-log "Generating fade colors from %s to %s in %d steps" start-color end-color steps)
   (cl-loop for i from 0 below steps
            collect (apply #'color-rgb-to-hex
@@ -221,7 +222,7 @@ The fade occurs in `STEPS' steps."
                                      start-color end-color))))
 
 (defun tdd-mode-update-mode-line (exit-code)
-  "Update the mode-line color based on the last test `EXIT-CODE'."
+  "Update the mode-line color based on the last test EXIT-CODE."
   (tdd-mode-log "Updating mode-line with exit code: %s" exit-code)
   (setq tdd-mode-last-test-exit-code exit-code)
   (let ((color (if (eq exit-code 0)
@@ -295,14 +296,14 @@ The fade occurs in `STEPS' steps."
     (message "Copied test command to clipboard: %s" test-command)))
 
 (defun tdd-mode-insert-pudb-breakpoint ()
-  "Insert a pudb breakpoint at the current line and disable `tdd-mode'."
+  "Insert a pudb breakpoint at the current line and disable tdd-mode."
   (interactive)
   (tdd-mode-log "Inserting pudb breakpoint")
   (insert "import pudb; pudb.set_trace() # fmt: off")
   (tdd-mode -1))
 
 (defun tdd-mode-insert-ipdb-breakpoint ()
-  "Insert an ipdb breakpoint at the current line and disable `tdd-mode'."
+  "Insert an ipdb breakpoint at the current line and disable tdd-mode."
   (interactive)
   (tdd-mode-log "Inserting ipdb breakpoint")
   (insert "import ipdb; ipdb.set_trace() # fmt: off")
@@ -310,7 +311,7 @@ The fade occurs in `STEPS' steps."
 
 (defun tdd-mode-display-test-output-buffer ()
   "Display the test output buffer and scroll to the end if enabled.
-Non-nil \"tdd-mode-scroll-output\" scrolls the buffer to the end."
+Non-nil tdd-mode-scroll-output scrolls the buffer to the end."
   (let ((buffer (get-buffer-create tdd-mode-test-buffer)))
     (tdd-mode-log "Displaying test output buffer")
     (display-buffer buffer '((display-buffer-reuse-window
@@ -335,9 +336,9 @@ Non-nil \"tdd-mode-scroll-output\" scrolls the buffer to the end."
 
 (defun tdd-mode--compilation-exit-message (process-status exit-status msg)
   "Handle the exit message of the compilation process.
-`PROCESS-STATUS' is a symbol describing how the process finished.
-`EXIT-STATUS' is the exit code or signal number.
-`MSG' is the message string."
+PROCESS-STATUS is a symbol describing how the process finished.
+EXIT-STATUS is the exit code or signal number.
+MSG is the message string."
   (let ((exit-code (if (numberp exit-status) exit-status 1)))
     (tdd-mode-log "Compilation process exited with status: %s, exit code: %s, message: %s" process-status exit-code msg)
     (tdd-mode-update-mode-line exit-code)
@@ -350,7 +351,7 @@ Non-nil \"tdd-mode-scroll-output\" scrolls the buffer to the end."
               '(("\\([^ \t\n]+\\):\\([0-9]+\\)" 1 2))))
 
 (defun tdd-mode-run-test (command)
-  "Run the test `COMMAND' using `compilation-mode' and ensure the output scrolls."
+  "Run the test COMMAND using \"compilation-mode\" and ensure the output scrolls."
   (interactive)
   (tdd-mode-log "Running test command: %s" command)
   (setq tdd-mode-last-test-command command)
@@ -368,7 +369,7 @@ Non-nil \"tdd-mode-scroll-output\" scrolls the buffer to the end."
     (tdd-mode-display-test-output-buffer)))
 
 (defun tdd-mode-notify (exit-code)
-  "Notify user based on `EXIT-CODE' and user preferences."
+  "Notify user based on EXIT-CODE and user preferences."
   (let ((msg (if (eq exit-code 0) "✅ Tests Passed!" "❌ Tests Failed!")))
     (tdd-mode-log "Notifying user with message: %s" msg)
     (cond
@@ -415,13 +416,13 @@ Only Python test files are included."
          (test-files (split-string changed-files "\n" t)))
     (tdd-mode-log "Found relevant test files: %s" test-files)
     (if test-files
-         (let ((test-command (format "%s %s %s"
+        (let ((command (format "%s %s %s"
                               (tdd-mode-get-runner)
                               project-root
                               (mapconcat #'identity test-files " "))))
-          (tdd-mode-log "Running relevant tests with command: %s" test-command)
-          (tdd-mode-run-test test-command))
-      (message "No test files found."))))
+          (tdd-mode-log "Running relevant tests with command '%s'" command)
+          (tdd-mode-run-test command))
+      (message "No relevant test files found."))))
 
 (defun tdd-mode-run-file-tests ()
   "Run all tests in the current file."
