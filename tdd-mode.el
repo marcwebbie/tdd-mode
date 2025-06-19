@@ -26,16 +26,16 @@
 ;; tdd-mode provides a modern, intuitive, and responsive minor mode for
 ;; test-driven development in Python projects using Emacs.
 ;;
-;; It supports various test runners (e.g. `pytest', `nosetests', `Django'),
+;; It supports various test runners (e.g. pytest, nosetests, Django),
 ;; provides interactive commands to run tests at point, rerun last tests,
 ;; display output in a dedicated buffer, and highlight the Emacs mode-line
 ;; based on test results using dynamic fading effects.
 ;;
 ;; Features:
 ;; - Run tests for current function, class, file, or project
-;; - Configurable test runners: `pytest', `Django', `nosetests'
+;; - Configurable test runners: pytest, Django, nosetests
 ;; - Automatic test reruns on file save
-;; - Alerts for pass/fail (with optional integration with `alert')
+;; - Alerts for pass/fail (with optional integration with "alert")
 ;; - Mode-line blinking with color fade feedback
 ;; - Interactive command map for test operations
 ;; - Copy test command or output to clipboard
@@ -45,10 +45,10 @@
 ;; Usage:
 ;; Enable `tdd-mode' in a Python buffer or globally with:
 ;;
-;;   (add-hook 'python-mode-hook #'tdd-mode)
+;;    (add-hook 'python-mode-hook #'tdd-mode)
 ;;
-;; Bind `tdd-mode-command-map' to a convenient keybinding:
-;;   (global-set-key (kbd "C-c C-t") tdd-mode-command-map)
+;; Bind "tdd-mode-command-map" to a convenient keybinding:
+;;    (global-set-key (kbd "C-c C-t") #'tdd-mode-command-map)
 ;;
 ;; See the GitHub repository for documentation, issues, and contributions.
 
@@ -145,22 +145,18 @@ If set to nil, keeps the buffer in the background."
 
 (defvar tdd-mode-command-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "t") 'tdd-mode-run-test-at-point)
-    (define-key map (kbd "a") 'tdd-mode-run-all-tests)
-    (define-key map (kbd "l") 'tdd-mode-run-last-test)
-    (define-key map (kbd "c") 'tdd-mode-copy-output-to-clipboard)
-    (define-key map (kbd "r") 'tdd-mode-run-relevant-tests)
-    (define-key map (kbd "f") 'tdd-mode-run-file-tests)
-    (define-key map (kbd "p") 'tdd-mode-copy-test-command-to-clipboard)
-    (define-key map (kbd "b") 'tdd-mode-insert-ipdb-breakpoint)
-    (define-key map (kbd "B") 'tdd-mode-insert-pudb-breakpoint)
-    (define-key map (kbd "C") 'tdd-mode-copy-diff-and-output)
+    (define-key map (kbd "t") #'tdd-mode-run-test-at-point)
+    (define-key map (kbd "a") #'tdd-mode-run-all-tests)
+    (define-key map (kbd "l") #'tdd-mode-run-last-test)
+    (define-key map (kbd "c") #'tdd-mode-copy-output-to-clipboard)
+    (define-key map (kbd "r") #'tdd-mode-run-relevant-tests)
+    (define-key map (kbd "f") #'tdd-mode-run-file-tests)
+    (define-key map (kbd "p") #'tdd-mode-copy-test-command-to-clipboard)
+    (define-key map (kbd "b") #'tdd-mode-insert-ipdb-breakpoint)
+    (define-key map (kbd "B") #'tdd-mode-insert-pudb-breakpoint)
+    (define-key map (kbd "C") #'tdd-mode-copy-diff-and-output)
     map)
   "Keymap for `tdd-mode' commands.")
-
-(defvar tdd-mode-prefix-map (make-sparse-keymap)
-  "Prefix map for TDD Mode commands.")
-(define-key tdd-mode-prefix-map (kbd "C-c C-t") tdd-mode-command-map)
 
 ;; Declare variables and functions to suppress compiler warnings
 (defvar tdd-mode nil
@@ -216,7 +212,7 @@ If set to nil, keeps the buffer in the background."
 
 (defun tdd-mode-generate-fade-colors (start-color end-color steps)
   "Generate a list of colors fading from `START-COLOR' to `END-COLOR'.
-The fade occurs in `STEPS' step."
+The fade occurs in `STEPS' steps."
   (tdd-mode-log "Generating fade colors from %s to %s in %d steps" start-color end-color steps)
   (cl-loop for i from 0 below steps
            collect (apply 'color-rgb-to-hex
@@ -242,16 +238,16 @@ The fade occurs in `STEPS' step."
     (tdd-mode-log "Inner testable: %s, Outer testable: %s" inner-obj outer-obj)
     (if (and inner-obj outer-def outer-obj)
         (cond
-         ((equal outer-def "def") outer-obj)
-         ((equal inner-obj outer-obj) outer-obj)
-         (t (format "%s::%s" outer-obj inner-obj)))
+          ((equal outer-def "def") outer-obj)
+          ((equal inner-obj outer-obj) outer-obj)
+          (t (format "%s::%s" outer-obj inner-obj)))
       nil)))
 
 (defun tdd-mode--inner-testable ()
   "Find the function name for the test at point."
   (save-excursion
     (re-search-backward
-     "^[ \t]\\{0,4\\}\\(class\\|\\(?:async \\)?def\\)[ \t]+\\([a-zA-Z0-9_]+\\)" nil t)
+      "^[ \t]\\{0,4\\}\\(class\\|\\(?:async \\)?def\\)[ \t]+\\([a-zA-Z0-9_]+\\)" nil t)
     (if (match-beginning 2)
         (buffer-substring-no-properties (match-beginning 2) (match-end 2))
       nil)))
@@ -260,7 +256,7 @@ The fade occurs in `STEPS' step."
   "Find the class or outer function around point."
   (save-excursion
     (re-search-backward
-     "^\\(class\\|\\(?:async \\)?def\\)[ \t]+\\([a-zA-Z0-9_]+\\)" nil t)
+      "^\\(class\\|\\(?:async \\)?def\\)[ \t]+\\([a-zA-Z0-9_]+\\)" nil t)
     (if (match-beginning 2)
         (cons (match-string 1) (match-string 2))
       nil)))
@@ -329,7 +325,7 @@ The fade occurs in `STEPS' step."
 
 (defun tdd-mode--compilation-filter ()
   "Process the output of the compilation buffer."
-  (when (eq major-mode 'tdd-mode-compilation-mode)
+  (when (derived-mode-p 'tdd-mode-compilation-mode)
     (let ((inhibit-read-only t))
       (tdd-mode-log "Processing compilation output")
       (ansi-color-apply-on-region compilation-filter-start (point-max))
@@ -364,17 +360,17 @@ The fade occurs in `STEPS' step."
   (setq tdd-mode-last-test-command command)
   (setq tdd-mode-last-test-exit-code nil)
   (let ((compilation-buffer-name-function (lambda (_)
-                                            tdd-mode-test-buffer))
+                                             tdd-mode-test-buffer))
         (default-directory (tdd-mode-get-project-root))
         (compilation-scroll-output tdd-mode-scroll-output)
         ;; Set environment variables for color support
         (compilation-environment '("TERM=xterm-256color" "PYTHONUNBUFFERED=1")))
     (let ((compilation-buffer
-           (compilation-start command 'tdd-mode-compilation-mode)))
+            (compilation-start command 'tdd-mode-compilation-mode)))
       ;; Apply ANSI colors and scroll to the end
       (with-current-buffer compilation-buffer
         (setq-local compilation-exit-message-function #'tdd-mode--compilation-exit-message)
-        (add-hook 'compilation-filter-hook 'tdd-mode--compilation-filter nil t)))
+        (add-hook 'compilation-filter-hook #'tdd-mode--compilation-filter nil t)))
     ;; Display the test output buffer without switching focus
     (tdd-mode-display-test-output-buffer)))
 
@@ -383,14 +379,14 @@ The fade occurs in `STEPS' step."
   (let ((msg (if (eq exit-code 0) "✅ Tests Passed!" "❌ Tests Failed!")))
     (tdd-mode-log "Notifying user with message: %s" msg)
     (cond
-     ((and tdd-mode-notify-on-pass (eq exit-code 0))
-      (if tdd-mode-alert-enabled
-          (alert msg :title "TDD Mode" :severity 'normal)
-        (message msg)))
-     ((and tdd-mode-notify-on-fail (not (eq exit-code 0)))
-      (if tdd-mode-alert-enabled
-          (alert msg :title "TDD Mode" :severity 'high)
-        (message msg))))))
+      ((and tdd-mode-notify-on-pass (eq exit-code 0))
+       (if tdd-mode-alert-enabled
+           (alert msg :title "TDD Mode" :severity 'normal)
+         (message msg)))
+      ((and tdd-mode-notify-on-fail (not (eq exit-code 0)))
+       (if tdd-mode-alert-enabled
+           (alert msg :title "TDD Mode" :severity 'high)
+         (message msg))))))
 
 (defun tdd-mode-run-test-at-point ()
   "Run the test at point (function, class, or file level)."
@@ -495,12 +491,12 @@ Only Python test files are included."
   "Reapply the mode-line color based on the last test result when switching buffers."
   (when (and tdd-mode tdd-mode-blink-enabled (not tdd-mode-blinking-in-progress))
     (let ((color (cond
-                  ((null tdd-mode-last-test-exit-code)
-                   tdd-mode-original-mode-line-bg)
-                  ((eq tdd-mode-last-test-exit-code 0)
-                   tdd-mode-blink-pass-color)
-                  (t
-                   tdd-mode-blink-fail-color))))
+                   ((null tdd-mode-last-test-exit-code)
+                    tdd-mode-original-mode-line-bg)
+                   ((eq tdd-mode-last-test-exit-code 0)
+                    tdd-mode-blink-pass-color)
+                   (t
+                    tdd-mode-blink-fail-color))))
       (tdd-mode-log "Reapplying mode-line color: %s" color)
       (tdd-mode-set-mode-line-color color))))
 
@@ -515,18 +511,18 @@ Only Python test files are included."
   "Test-Driven Development mode for Python in Emacs."
   :lighter " TDD"
   :keymap (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "C-c C-t") tdd-mode-command-map)
+            (define-key map (kbd "C-c C-t") #'tdd-mode-command-map)
             map)
   :global t
   (if tdd-mode
       (progn
         (tdd-mode-log "TDD Mode activated")
         (setq tdd-mode-original-mode-line-bg (face-background 'mode-line))
-        (add-hook 'after-save-hook 'tdd-mode-after-save-handler)
+        (add-hook 'after-save-hook #'tdd-mode-after-save-handler)
         (message "[tdd-mode] TDD Mode activated"))
     ;; Deactivation code
     (tdd-mode-log "TDD Mode deactivated")
-    (remove-hook 'after-save-hook 'tdd-mode-after-save-handler)
+    (remove-hook 'after-save-hook #'tdd-mode-after-save-handler)
     (when (timerp tdd-mode-fade-timer)
       (cancel-timer tdd-mode-fade-timer)
       (setq tdd-mode-fade-timer nil))
