@@ -30,11 +30,11 @@
 
 * Languages supported
 
- - [X] Python
- - [ ] Typescript
- - [ ] Javascript
- - [ ] C++
- - [ ] Ruby
+- [X] Python
+- [ ] Typescript
+- [ ] Javascript
+- [ ] C++
+- [ ] Ruby
 
 * Quickstart
 Get up and running with =tdd-mode= in a few steps.
