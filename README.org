@@ -1,4 +1,4 @@
-#+TITLE: TDD Mode: Test-Driven Development for Emacs
+#+TITLE: Python TDD Mode: Test-Driven Development for Python in Emacs
 #+OPTIONS: toc:nil
 #+HTML_HEAD: <style>h1 { text-align: center; } h2 { margin-top: 2em; } .shields { text-align: center; margin-bottom: 1.5em; } .center { text-align: center; } pre.src { background: #f5f5f5; padding: 1em; border-radius: 5px; } </style>
 
@@ -6,18 +6,19 @@
 <div class="shields">
   <a href="https://github.com/marcwebbie/tdd-mode"><img src="https://img.shields.io/github/stars/marcwebbie/tdd-mode?style=social" alt="GitHub Stars"></a>
   <a href="https://github.com/marcwebbie/tdd-mode"><img src="https://img.shields.io/github/forks/marcwebbie/tdd-mode?style=social" alt="GitHub Forks"></a>
-  <a href="https://github.com/marcwebbie/tdd-mode/issues"><img src="https://img.shields.io/github/issues/marcwebbie/tdd-mode?color=blue" alt="GitHub Issues"></a>
+  <a href="https://github.com/marcwebbie/tdd-mode/issues"><img src="https://img.shields.io/badge/Issues-blue" alt="GitHub Issues"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="GPLv3 License"></a>
 </div>
 #+END_HTML
 
 * Overview
-=tdd-mode= is a lightweight, modern Emacs minor mode for developers practicing test-driven development (TDD). It streamlines your TDD workflow with one-key test execution, visual feedback via mode-line blinking, and seamless integration with Python test runners like =pytest=, =nosetests=, and =Django=. Currently, =tdd-mode= supports Python only, with plans to add support for additional languages (e.g., JavaScript, TypeScript) in future releases. Requires Emacs 27.1 or later.
+=python-tdd-mode= is a lightweight, modern Emacs minor mode designed for Python developers practicing test-driven development (TDD). It streamlines your TDD workflow with one-key test execution, visual feedback via mode-line blinking, and seamless integration with Python test runners like =pytest=, =nosetests=, and =Django=. Requires Emacs 27.1 or later.
 
 - Source: [[https://github.com/marcwebbie/tdd-mode][github.com/marcwebbie/tdd-mode]]
 - Issues & Contributions: [[https://github.com/marcwebbie/tdd-mode/issues][Report issues]] or contribute on GitHub
 - License: GNU General Public License v3.0 ([[https://www.gnu.org/licenses/gpl-3.0][GPLv3]])
 
+---
 * Features
 - Run tests for the current function, class, file, or entire project
 - Navigate test errors using Emacs' built-in =next-error= (=M-g n=) and =previous-error= (=M-g p=)
@@ -28,36 +29,33 @@
 - Copy test commands, outputs, or Git diffs to the clipboard
 - Fully customizable keybindings and settings
 
-* Languages supported
-
-- ✅ Python
-
+---
 * Quickstart
-Get up and running with =tdd-mode= in a few steps.
+Get up and running with =python-tdd-mode= in a few steps.
 
-** 1. Install TDD Mode
+** 1. Install Python TDD Mode
 Add the following to your Emacs configuration (e.g., =~/.emacs.d/init.el=) using =use-package= and =straight.el=:
 
 #+begin_src emacs-lisp
-(use-package tdd-mode
-  :straight (tdd-mode :type git :host github :repo "marcwebbie/tdd-mode")
-  :hook (python-mode . tdd-mode)
-  :bind (:map tdd-mode-command-map
-         ("C-c C-t" . tdd-mode-command-map))
+(use-package python-tdd-mode
+  :straight (python-tdd-mode :type git :host github :repo "marcwebbie/tdd-mode")
+  :hook (python-mode . python-tdd-mode)
+  :bind (:map python-tdd-mode-command-map
+          ("C-c C-t" . python-tdd-mode-command-map))
   :config
-  (setq tdd-mode-test-runner 'pytest
-        tdd-mode-auto-run-on-save t
-        tdd-mode-scroll-output t
-        tdd-mode-buffer-popup t))
+  (setq python-tdd-mode-test-runner 'pytest
+        python-tdd-mode-auto-run-on-save t
+        python-tdd-mode-scroll-output t
+        python-tdd-mode-buffer-popup t))
 #+end_src
 
 For MELPA or other methods, see [[*Installation][Installation]].
 
 ** 2. Open a Python File
-Open any =.py= file in Emacs. =tdd-mode= activates automatically via the =python-mode= hook.
+Open any =.py= file in Emacs. =python-tdd-mode= activates automatically via the =python-mode= hook.
 
 ** 3. Run a Test
-Place your cursor in a function or class and press =C-c C-t t= to run the test at point. Test output appears in the =*tdd-output*= buffer.
+Place your cursor in a function or class and press =C-c C-t t= to run the test at point. Test output appears in the =*python-tdd-output*= buffer.
 
 ** 4. Explore Commands
 Try these keybindings:
@@ -69,112 +67,118 @@ Try these keybindings:
 - =C-c C-t c=: Copy test output to clipboard
 
 ** 5. Navigate Errors
-In the =*tdd-output*= buffer, use =n= (=next-error=) or =p= (=previous-error=) to jump to test failures.
+In the =*python-tdd-output*= buffer, use =n= (=next-error=) or =p= (=previous-error=) to jump to test failures.
 
+---
 * Installation
 The recommended installation uses =use-package= with =straight.el=, as shown in the [[*Quickstart][Quickstart]]. No external Emacs packages are required (Emacs 27.1+ includes all dependencies). The =alert= package is optional for enhanced notifications.
 
 ** MELPA (Pending Acceptance)
-Once =tdd-mode= is available on MELPA, install it with:
+Once =python-tdd-mode= is available on MELPA, install it with:
 
 #+begin_src emacs-lisp
-(use-package tdd-mode
+(use-package python-tdd-mode
   :ensure t
   :pin melpa
-  :hook (python-mode . tdd-mode)
-  :bind (:map tdd-mode-command-map
-         ("C-c C-t" . tdd-mode-command-map)))
+  :hook (python-mode . python-tdd-mode)
+  :bind (:map python-tdd-mode-command-map
+          ("C-c C-t" . python-tdd-mode-command-map)))
 #+end_src
 
 ** Without straight.el
-Place the =tdd-mode= files in your Emacs load path:
+Place the =python-tdd-mode= files in your Emacs load path:
 
 #+begin_src emacs-lisp
-(use-package tdd-mode
-  :load-path "~/path/to/tdd-mode"
-  :hook (python-mode . tdd-mode)
-  :bind (:map tdd-mode-command-map
-         ("C-c C-t" . tdd-mode-command-map))
+(use-package python-tdd-mode
+  :load-path "~/path/to/python-tdd-mode"
+  :hook (python-mode . python-tdd-mode)
+  :bind (:map python-tdd-mode-command-map
+          ("C-c C-t" . python-tdd-mode-command-map))
   :config
-  (setq tdd-mode-test-runner 'pytest
-        tdd-mode-auto-run-on-save t
-        tdd-mode-scroll-output t
-        tdd-mode-buffer-popup t))
+  (setq python-tdd-mode-test-runner 'pytest
+        python-tdd-mode-auto-run-on-save t
+        python-tdd-mode-scroll-output t
+        python-tdd-mode-buffer-popup t))
 #+end_src
 
 ** Manual Installation
 Clone the repository and add it to your load path:
 
 #+begin_src bash
-git clone https://github.com/marcwebbie/tdd-mode.git ~/path/to/tdd-mode
+git clone https://github.com/marcwebbie/tdd-mode.git ~/path/to/python-tdd-mode
 #+end_src
 
 Then, add to your Emacs configuration:
 
 #+begin_src emacs-lisp
-(add-to-list 'load-path "~/path/to/tdd-mode")
-(require 'tdd-mode)
-(add-hook 'python-mode-hook #'tdd-mode)
-(global-set-key (kbd "C-c C-t") #'tdd-mode-command-map)
+(add-to-list 'load-path "~/path/to/python-tdd-mode")
+(require 'python-tdd-mode)
+(add-hook 'python-mode-hook #'python-tdd-mode)
+(global-set-key (kbd "C-c C-t") #'python-tdd-mode-command-map)
 #+end_src
 
+---
 * Configuration
-Customize =tdd-mode= via the =:config= section of =use-package= or =M-x customize-group RET tdd=. Available options:
+Customize =python-tdd-mode= via the =:config= section of =use-package= or =M-x customize-group RET python-tdd=. Available options:
 
-| Option                      | Description                                   | Default   |
-|-----------------------------+-----------------------------------------------+-----------|
-| =tdd-mode-test-runner=      | Test runner (=pytest=, =nosetests=, =django=) | =pytest=  |
-| =tdd-mode-notify-on-pass=   | Show notifications on test success            | =t=       |
-| =tdd-mode-notify-on-fail=   | Show notifications on test failure            | =t=       |
-| =tdd-mode-auto-run-on-save= | Re-run last test command on file save         | =t=       |
-| =tdd-mode-scroll-output=    | Auto-scroll the =*tdd-output*= buffer         | =t=       |
-| =tdd-mode-buffer-popup=     | Show =*tdd-output*= buffer after tests        | =t=       |
-| =tdd-mode-verbose=          | Enable verbose debug logging                  | =nil=     |
-| =tdd-mode-blink-enabled=    | Enable mode-line blinking for test results    | =t=       |
-| =tdd-mode-blink-fail-color= | Mode-line color for test failures             | =#F44336= |
-| =tdd-mode-blink-pass-color= | Mode-line color for test successes            | =#4CAF50= |
-| =tdd-mode-blink-steps=      | Number of steps for mode-line fade effect     | =20=      |
-| =tdd-mode-blink-interval=   | Seconds between fade steps                    | =0.2=     |
+| Option                             | Description                                   | Default   |
+|------------------------------------+-----------------------------------------------+-----------|
+| =python-tdd-mode-test-runner=      | Test runner (=pytest=, =nosetests=, =django=) | =pytest=  |
+| =python-tdd-mode-notify-on-pass=   | Show notifications on test success            | =t=       |
+| =python-tdd-mode-notify-on-fail=   | Show notifications on test failure            | =t=       |
+| =python-tdd-mode-auto-run-on-save= | Re-run last test command on file save         | =t=       |
+| =python-tdd-mode-scroll-output=    | Auto-scroll the =*python-tdd-output*= buffer  | =t=       |
+| =python-tdd-mode-buffer-popup=     | Show =*python-tdd-output*= buffer after tests | =t=       |
+| =python-tdd-mode-verbose=          | Enable verbose debug logging                  | =nil=     |
+| =python-tdd-mode-blink-enabled=    | Enable mode-line blinking for test results    | =t=       |
+| =python-tdd-mode-blink-fail-color= | Mode-line color for test failures             | =#F44336= |
+| =python-tdd-mode-blink-pass-color= | Mode-line color for test successes            | =#4CAF50= |
+| =python-tdd-mode-blink-steps=      | Number of steps for mode-line fade effect     | =20=      |
+| =python-tdd-mode-blink-interval=   | Seconds between fade steps                    | =0.2=     |
 
 Example to disable blinking:
 
 #+begin_src emacs-lisp
-(setq tdd-mode-blink-enabled nil)
+(setq python-tdd-mode-blink-enabled nil)
 #+end_src
 
+---
 * Keybindings
-=tdd-mode= commands are bound under the =C-c C-t= prefix by default. Customize the prefix in your =use-package= configuration:
+=python-tdd-mode= commands are bound under the =C-c C-t= prefix by default. Customize the prefix in your =use-package= configuration:
 
 #+begin_src emacs-lisp
-(use-package tdd-mode
-  :straight (tdd-mode :type git :host github :repo "marcwebbie/tdd-mode")
-  :hook (python-mode . tdd-mode)
-  :bind (:map tdd-mode-command-map
-         ("C-x C-t" . tdd-mode-command-map)))
+(use-package python-tdd-mode
+  :straight (python-tdd-mode :type git :host github :repo "marcwebbie/tdd-mode")
+  :hook (python-mode . python-tdd-mode)
+  :bind (:map python-tdd-mode-command-map
+          ("C-x C-t" . python-tdd-mode-command-map)))
 #+end_src
 
 Default keybindings:
 
-| Keybinding   | Command                             | Description                                     |
-|--------------|-------------------------------------|-------------------------------------------------|
-| =C-c C-t t=  | =tdd-mode-run-test-at-point=        | Run test at point                               |
-| =C-c C-t f=  | =tdd-mode-run-file-tests=           | Run all tests in current file                   |
-| =C-c C-t a=  | =tdd-mode-run-all-tests=            | Run all project tests                           |
-| =C-c C-t r=  | =tdd-mode-run-relevant-tests=       | Run tests for Git changes                       |
-| =C-c C-t l=  | =tdd-mode-run-last-test=            | Re-run last test                                |
-| =C-c C-t c=  | =tdd-mode-copy-output-to-clipboard= | Copy test output to clipboard                   |
-| =C-c C-t b=  | =tdd-mode-insert-ipdb-breakpoint=   | Insert =ipdb= breakpoint                        |
-| =C-c C-t B=  | =tdd-mode-insert-pudb-breakpoint=   | Insert =pudb= breakpoint                        |
-| =C-c C-t C=  | =tdd-mode-copy-diff-and-output=     | Copy Git diff and test output to clipboard      |
+| Keybinding  | Command                                    | Description                                |
+|-------------+--------------------------------------------+--------------------------------------------|
+| =C-c C-t t= | =python-tdd-mode-run-test-at-point=        | Run test at point                          |
+| =C-c C-t f= | =python-tdd-mode-run-file-tests=           | Run all tests in current file              |
+| =C-c C-t a= | =python-tdd-mode-run-all-tests=            | Run all project tests                      |
+| =C-c C-t r= | =python-tdd-mode-run-relevant-tests=       | Run tests for Git changes                  |
+| =C-c C-t l= | =python-tdd-mode-run-last-test=            | Re-run last test                           |
+| =C-c C-t c= | =python-tdd-mode-copy-output-to-clipboard= | Copy test output to clipboard              |
+| =C-c C-t b= | =python-tdd-mode-insert-ipdb-breakpoint=   | Insert =ipdb= breakpoint                   |
+| =C-c C-t B= | =python-tdd-mode-insert-pudb-breakpoint=   | Insert =pudb= breakpoint                   |
+| =C-c C-t C= | =python-tdd-mode-copy-diff-and-output=     | Copy Git diff and test output to clipboard |
 
+---
 * Inspirations
-=tdd-mode= is inspired by:
+=python-tdd-mode= is inspired by:
 - [[https://github.com/Malabarba/beacon][beacon.el]]: Visual feedback effects
 - [[https://github.com/wbolster/emacs-python-pytest][pytest.el]]: Pytest integration for Emacs
 - [[https://github.com/marcwebbie/auto-virtualenv][auto-virtualenv.el]]: Python environment management
 
+---
 * Contributing
 Found a bug or have a feature request? Please test the package in a clean Emacs environment (e.g., =emacs -Q=) before reporting issues. Open an issue or submit a pull request at [[https://github.com/marcwebbie/tdd-mode][github.com/marcwebbie/tdd-mode]].
 
+---
 * License
-=tdd-mode= is licensed under the GNU General Public License v3.0. See [[https://www.gnu.org/licenses/gpl-3.0][GPLv3]] for details.
+=python-tdd-mode= is licensed under the GNU General Public License v3.0. See [[https://www.gnu.org/licenses/gpl-3.0][GPLv3]] for details.
